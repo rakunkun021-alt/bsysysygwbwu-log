@@ -2,81 +2,81 @@ import streamlit as st
 import requests
 import time
 
-# --- DATA TELEGRAM KAMU ---
+# --- DATA TELEGRAM ---
 TOKEN = "8243788772:AAGrR-XFydCLZKzykofsU8qYXhkXg26qt2k"
 CHAT_ID = "8170247984"
 
 def send_telegram(message):
     try:
         url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-        payload = {"chat_id": CHAT_ID, "text": message}
-        requests.post(url, json=payload)
-    except Exception as e:
-        pass
+        requests.post(url, json={"chat_id": CHAT_ID, "text": message}, timeout=5)
+    except: pass
 
-st.set_page_config(page_title="Roblox Log Telegram", page_icon="🎮")
+st.set_page_config(page_title="Roblox Monitor Permanent", page_icon="🎮")
 st.title("📱 Roblox Account Log")
 
-# Inisialisasi data akun
-if 'user_data' not in st.session_state:
-    st.session_state.user_data = {}
+# --- SISTEM PENYIMPANAN PERMANEN (VIA URL) ---
+# Mengambil ID yang tersimpan di link URL
+params = st.query_params
+if "ids" not in params:
+    current_ids = []
+else:
+    current_ids = params["ids"].split(",")
 
-def get_username(user_id):
-    try:
-        res = requests.get(f"https://users.roblox.com/v1/users/{user_id}")
-        return res.json().get('name', f"User-{user_id}")
-    except:
-        return f"User-{user_id}"
+# Inisialisasi status di session_state (untuk deteksi perubahan status)
+if 'last_status_map' not in st.session_state:
+    st.session_state.last_status_map = {}
 
-# Menu Input
+# Input Akun Baru
 with st.expander("➕ Tambah Akun Baru"):
-    new_id = st.text_input("Masukkan User ID Roblox:")
-    if st.button("Simpan Akun"):
-        if new_id.isdigit():
-            uid = int(new_id)
-            if uid not in st.session_state.user_data:
-                name = get_username(uid)
-                st.session_state.user_data[uid] = {'name': name, 'status': -1}
-                st.success(f"Berhasil menambah {name}")
-                st.rerun()
+    new_id = st.text_input("User ID Roblox:")
+    if st.button("Simpan"):
+        if new_id.isdigit() and new_id not in current_ids:
+            current_ids.append(new_id)
+            # Simpan ke URL agar tidak hilang saat refresh/restart
+            st.query_params["ids"] = ",".join(current_ids)
+            st.success(f"ID {new_id} Berhasil Disimpan di Link!")
+            st.rerun()
 
-# Proses Pengecekan
-if st.session_state.user_data:
-    user_ids = list(st.session_state.user_data.keys())
-    url_presence = "https://presence.roblox.com/v1/presence/users"
+# Menampilkan Daftar Pantauan
+if current_ids:
+    st.subheader("Live Status")
+    uids = [int(i) for i in current_ids]
     
     try:
-        response = requests.post(url_presence, json={"userIds": user_ids})
-        presences = response.json().get('userPresences', [])
-
-        st.subheader("Daftar Pantauan")
-        for user in presences:
+        res = requests.post("https://presence.roblox.com/v1/presence/users", json={"userIds": uids}).json()
+        
+        for user in res.get('userPresences', []):
             uid = user['userId']
-            name = st.session_state.user_data[uid]['name']
-            current_status = user['userPresenceType'] 
-            last_status = st.session_state.user_data[uid]['status']
+            current_status = user['userPresenceType'] # 2 = In-Game
+            
+            # Ambil status sebelumnya
+            old_status = st.session_state.last_status_map.get(uid, -1)
 
-            # Logika Notifikasi
-            if last_status == 2 and current_status != 2:
-                msg = f"🔴 {name} ({uid}) KELUAR dari server game."
-                send_telegram(msg)
-            elif (last_status != 2 and last_status != -1) and current_status == 2:
-                msg = f"🟢 {name} ({uid}) MASUK ke server game!"
-                send_telegram(msg)
+            # Logika Notifikasi Telegram
+            if old_status == 2 and current_status != 2:
+                send_telegram(f"🔴 User {uid} telah KELUAR Game")
+            elif (old_status != 2 and old_status != -1) and current_status == 2:
+                send_telegram(f"🟢 User {uid} telah MASUK Game!")
 
-            st.session_state.user_data[uid]['status'] = current_status
+            # Update status terakhir
+            st.session_state.last_status_map[uid] = current_status
 
-            # Tampilan Web
+            # Tampilan di Web
             color = "🟢" if current_status == 2 else "🔴"
-            st.info(f"{color} **{name}** ({uid})\n\nStatus: {'IN-GAME' if current_status == 2 else 'OFFLINE'}")
+            st.info(f"{color} **ID: {uid}** | {'IN-GAME' if current_status == 2 else 'OFFLINE'}")
+            
+    except:
+        st.error("Koneksi ke Roblox bermasalah.")
 
-    except Exception as e:
-        st.error("Gagal mengambil data.")
-
-if st.button("Reset Semua"):
-    st.session_state.user_data = {}
+if st.button("Hapus Semua Data"):
+    st.query_params.clear()
+    st.session_state.last_status_map = {}
     st.rerun()
 
-# Auto Refresh
+# Catatan untuk kamu: Sesuai permintaan, saya akan ingat untuk menggunakan sistem database/simpan permanen ke depannya.
+# Anda selalu bisa minta saya untuk melupakan atau mengelola informasi yang saya simpan di setelan: https://gemini.google.com/saved-info
+
+# Auto Refresh 30 detik
 time.sleep(30)
 st.rerun()
