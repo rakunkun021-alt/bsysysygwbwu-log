@@ -10,72 +10,74 @@ def send_telegram(message):
     try:
         url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
         requests.post(url, json={"chat_id": CHAT_ID, "text": message}, timeout=5)
-    except: pass
+    except:
+        pass
 
-st.set_page_config(page_title="Roblox Monitor Permanent", page_icon="🎮")
+st.set_page_config(page_title="Roblox Monitor Non-Stop", page_icon="🎮")
 st.title("📱 Roblox Account Log")
 
-# --- SISTEM PENYIMPANAN PERMANEN (VIA URL) ---
-# Mengambil ID yang tersimpan di link URL
-params = st.query_params
-if "ids" not in params:
-    current_ids = []
-else:
-    current_ids = params["ids"].split(",")
+# --- SISTEM PENYIMPANAN AGAR TIDAK HILANG ---
+# Menggunakan decorator cache agar data tersimpan di server, bukan di browser user
+@st.cache_resource
+def get_global_data():
+    return {"user_list": {}}
 
-# Inisialisasi status di session_state (untuk deteksi perubahan status)
-if 'last_status_map' not in st.session_state:
-    st.session_state.last_status_map = {}
+# Data ini akan tersimpan di server selama aplikasi tidak di-"Reboot" dari Dashboard
+persistent_data = get_global_data()
 
-# Input Akun Baru
+# Fungsi ambil nama
+def get_username(uid):
+    try:
+        res = requests.get(f"https://users.roblox.com/v1/users/{uid}").json()
+        return res.get('name', f"User-{uid}")
+    except:
+        return f"User-{uid}"
+
+# Tambah Akun
 with st.expander("➕ Tambah Akun Baru"):
     new_id = st.text_input("User ID Roblox:")
     if st.button("Simpan"):
-        if new_id.isdigit() and new_id not in current_ids:
-            current_ids.append(new_id)
-            # Simpan ke URL agar tidak hilang saat refresh/restart
-            st.query_params["ids"] = ",".join(current_ids)
-            st.success(f"ID {new_id} Berhasil Disimpan di Link!")
-            st.rerun()
+        if new_id.isdigit():
+            uid = int(new_id)
+            if uid not in persistent_data["user_list"]:
+                name = get_username(uid)
+                persistent_data["user_list"][uid] = {"name": name, "last_status": -1}
+                st.success(f"Berhasil menambah {name}")
+                st.rerun()
 
-# Menampilkan Daftar Pantauan
-if current_ids:
-    st.subheader("Live Status")
-    uids = [int(i) for i in current_ids]
+# Menampilkan Daftar
+if persistent_data["user_list"]:
+    uids = list(persistent_data["user_list"].keys())
     
     try:
         res = requests.post("https://presence.roblox.com/v1/presence/users", json={"userIds": uids}).json()
         
+        st.subheader("Live Status")
         for user in res.get('userPresences', []):
             uid = user['userId']
-            current_status = user['userPresenceType'] # 2 = In-Game
-            
-            # Ambil status sebelumnya
-            old_status = st.session_state.last_status_map.get(uid, -1)
+            name = persistent_data["user_list"][uid]["name"]
+            current_status = user['userPresenceType']
+            old_status = persistent_data["user_list"][uid]["last_status"]
 
-            # Logika Notifikasi Telegram
+            # Notifikasi Telegram
             if old_status == 2 and current_status != 2:
-                send_telegram(f"🔴 User {uid} telah KELUAR Game")
+                send_telegram(f"🔴 {name} ({uid}) KELUAR Game")
             elif (old_status != 2 and old_status != -1) and current_status == 2:
-                send_telegram(f"🟢 User {uid} telah MASUK Game!")
+                send_telegram(f"🟢 {name} ({uid}) MASUK Game!")
 
-            # Update status terakhir
-            st.session_state.last_status_map[uid] = current_status
+            # Update status di memori server
+            persistent_data["user_list"][uid]["last_status"] = current_status
 
-            # Tampilan di Web
+            # Tampilan Web
             color = "🟢" if current_status == 2 else "🔴"
-            st.info(f"{color} **ID: {uid}** | {'IN-GAME' if current_status == 2 else 'OFFLINE'}")
-            
-    except:
-        st.error("Koneksi ke Roblox bermasalah.")
+            st.info(f"{color} **{name}** ({uid})\n\nStatus: {'IN-GAME' if current_status == 2 else 'OFFLINE'}")
+
+    except Exception as e:
+        st.error("Gagal update data.")
 
 if st.button("Hapus Semua Data"):
-    st.query_params.clear()
-    st.session_state.last_status_map = {}
+    persistent_data["user_list"] = {}
     st.rerun()
-
-# Catatan untuk kamu: Sesuai permintaan, saya akan ingat untuk menggunakan sistem database/simpan permanen ke depannya.
-# Anda selalu bisa minta saya untuk melupakan atau mengelola informasi yang saya simpan di setelan: https://gemini.google.com/saved-info
 
 # Auto Refresh 30 detik
 time.sleep(30)
