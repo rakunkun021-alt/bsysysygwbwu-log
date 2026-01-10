@@ -13,16 +13,18 @@ def send_telegram(message):
     except:
         pass
 
-st.set_page_config(page_title="Roblox Monitor 24/7", page_icon="🎮")
-st.title("📱 Roblox Permanent Log")
+st.set_page_config(page_title="Roblox Monitor Sidebar", page_icon="🎮")
+st.title("📱 Roblox Account Log")
 
-# --- SISTEM PENYIMPANAN STABIL ---
-# Menggunakan cache_resource agar data menempel di server Streamlit
+# --- SISTEM PENYIMPANAN PERMANEN ---
 @st.cache_resource
-def get_database():
-    return {"users": {}}
+def get_global_data():
+    return {
+        "user_list": {}, # Daftar yang sedang dipantau
+        "history": []    # Riwayat ID yang pernah dimasukkan
+    }
 
-db = get_database()
+persistent_data = get_global_data()
 
 def get_username(uid):
     try:
@@ -31,54 +33,87 @@ def get_username(uid):
     except:
         return f"User-{uid}"
 
-# --- MENU TAMBAH ---
+# --- SIDEBAR: TAMBAH & RIWAYAT ---
 with st.sidebar:
-    st.header("Settings")
-    new_id = st.text_input("Tambah User ID:")
-    if st.button("Simpan ID"):
+    st.header("Konfigurasi")
+    
+    # Input ID Manual
+    new_id = st.text_input("Masukkan User ID Roblox:", placeholder="Contoh: 3410934690")
+    
+    if st.button("Simpan Ke Pantauan"):
         if new_id.isdigit():
             uid = int(new_id)
-            if uid not in db["users"]:
+            if uid not in persistent_data["user_list"]:
                 name = get_username(uid)
-                db["users"][uid] = {"name": name, "status": -1}
-                st.success(f"Monitoring {name}")
+                persistent_data["user_list"][uid] = {"name": name, "last_status": -1}
+                # Tambah ke riwayat jika belum ada
+                if new_id not in persistent_data["history"]:
+                    persistent_data["history"].append(new_id)
+                st.success(f"Memantau {name}")
                 st.rerun()
+
+    st.divider()
     
-    if st.button("🔴 Hapus Semua Data"):
-        db["users"] = {}
+    # Fitur Riwayat ID
+    if persistent_data["history"]:
+        st.subheader("📜 Riwayat ID")
+        selected_history = st.selectbox("Pilih dari riwayat:", ["-- Pilih ID --"] + persistent_data["history"])
+        
+        if selected_history != "-- Pilih ID --":
+            if st.button("Pantau ID Ini"):
+                uid = int(selected_history)
+                if uid not in persistent_data["user_list"]:
+                    name = get_username(uid)
+                    persistent_data["user_list"][uid] = {"name": name, "last_status": -1}
+                    st.success(f"Menambah {name} dari riwayat")
+                    st.rerun()
+        
+        if st.button("🗑️ Hapus Riwayat"):
+            persistent_data["history"] = []
+            st.rerun()
+
+    st.divider()
+    if st.button("🔴 Reset Semua Pantauan"):
+        persistent_data["user_list"] = {}
         st.rerun()
 
-# --- PROSES MONITORING ---
-if db["users"]:
-    uids = list(db["users"].keys())
+# --- HALAMAN UTAMA: MONITORING ---
+if persistent_data["user_list"]:
+    uids = list(persistent_data["user_list"].keys())
+    
     try:
-        res = requests.post("https://presence.roblox.com/v1/presence/users", json={"userIds": uids}).json()
+        res_call = requests.post("https://presence.roblox.com/v1/presence/users", json={"userIds": uids})
+        res = res_call.json()
         
+        st.subheader("Live Status")
         for user in res.get('userPresences', []):
             uid = user['userId']
-            name = db["users"][uid]["name"]
-            curr_status = user['userPresenceType'] # 2 = In-Game
-            old_status = db["users"][uid]["status"]
+            name = persistent_data["user_list"][uid]["name"]
+            current_status = user['userPresenceType'] 
+            old_status = persistent_data["user_list"][uid]["last_status"]
 
-            # Notif Hanya Keluar
-            if old_status == 2 and curr_status != 2:
-                send_telegram(f"🔴 {name} ({uid}) KELUAR Game")
+            # Logika Notifikasi Keluar
+            if old_status == 2 and current_status != 2:
+                msg = f"🔴 {name} ({uid}) telah KELUAR dari server game."
+                send_telegram(msg)
             
-            db["users"][uid]["status"] = curr_status
+            persistent_data["user_list"][uid]["last_status"] = current_status
 
-            # Tampilan List
-            col1, col2 = st.columns([3, 1])
+            # Tampilan
+            col1, col2 = st.columns([4, 1])
             with col1:
-                color = "🟢" if curr_status == 2 else "🔴"
-                st.info(f"{color} **{name}** ({uid})")
+                color = "🟢" if current_status == 2 else "🔴"
+                st.info(f"{color} **{name}** ({uid})\n\nStatus: {'IN-GAME' if current_status == 2 else 'OFFLINE'}")
+            
             with col2:
                 if st.button("Hapus", key=f"del_{uid}"):
-                    del db["users"][uid]
+                    del persistent_data["user_list"][uid]
                     st.rerun()
     except:
-        st.error("API Error")
+        st.error("Gagal update data.")
+else:
+    st.write("Belum ada akun yang dipantau. Silakan tambah lewat Sidebar di kiri atas.")
 
-# Trik agar aplikasi tetap aktif saat dibuka
-st.caption("Aplikasi ini akan terus memantau selama tab ini atau Cron-job aktif.")
+# Auto Refresh 30 detik
 time.sleep(30)
 st.rerun()
