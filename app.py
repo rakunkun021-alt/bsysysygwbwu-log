@@ -12,11 +12,10 @@ def send_telegram(message):
         payload = {"chat_id": CHAT_ID, "text": message}
         requests.post(url, json=payload)
     except Exception as e:
-        print(f"Error kirim Telegram: {e}")
+        pass
 
 st.set_page_config(page_title="Roblox Log Telegram", page_icon="🎮")
 st.title("📱 Roblox Account Log")
-st.caption("Notifikasi akan dikirim otomatis ke Telegram kamu.")
 
 # Inisialisasi data akun
 if 'user_data' not in st.session_state:
@@ -37,7 +36,6 @@ with st.expander("➕ Tambah Akun Baru"):
             uid = int(new_id)
             if uid not in st.session_state.user_data:
                 name = get_username(uid)
-                # Set status awal ke -1 agar tidak langsung kirim notif saat baru ditambah
                 st.session_state.user_data[uid] = {'name': name, 'status': -1}
                 st.success(f"Berhasil menambah {name}")
                 st.rerun()
@@ -55,17 +53,30 @@ if st.session_state.user_data:
         for user in presences:
             uid = user['userId']
             name = st.session_state.user_data[uid]['name']
-            current_status = user['userPresenceType'] # 2 = In-Game
+            current_status = user['userPresenceType'] 
             last_status = st.session_state.user_data[uid]['status']
 
-            # --- LOGIKA NOTIFIKASI ---
-            # Jika status berubah dari In-Game ke Keluar
+            # Logika Notifikasi
             if last_status == 2 and current_status != 2:
-                msg = f"🔴 NOTIF: {name} ({uid}) telah KELUAR dari server game."
+                msg = f"🔴 {name} ({uid}) KELUAR dari server game."
                 send_telegram(msg)
-                st.toast(msg) # Muncul notif kecil di web
-            
-            # Jika status berubah dari Luar ke Masuk Server
             elif (last_status != 2 and last_status != -1) and current_status == 2:
-                msg = f"🟢 NOTIF: {name} ({uid}) telah MASUK ke server game!"
-                send_
+                msg = f"🟢 {name} ({uid}) MASUK ke server game!"
+                send_telegram(msg)
+
+            st.session_state.user_data[uid]['status'] = current_status
+
+            # Tampilan Web
+            color = "🟢" if current_status == 2 else "🔴"
+            st.info(f"{color} **{name}** ({uid})\n\nStatus: {'IN-GAME' if current_status == 2 else 'OFFLINE'}")
+
+    except Exception as e:
+        st.error("Gagal mengambil data.")
+
+if st.button("Reset Semua"):
+    st.session_state.user_data = {}
+    st.rerun()
+
+# Auto Refresh
+time.sleep(30)
+st.rerun()
