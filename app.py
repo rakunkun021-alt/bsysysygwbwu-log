@@ -1,6 +1,8 @@
 import streamlit as st
 import requests
 import time
+from datetime import datetime
+import pytz
 
 # --- DATA TELEGRAM ---
 TOKEN = "8243788772:AAGrR-XFydCLZKzykofsU8qYXhkXg26qt2k"
@@ -13,18 +15,24 @@ def send_telegram(message):
     except:
         pass
 
-st.set_page_config(page_title="Roblox Monitor Sidebar", page_icon="🎮")
-st.title("📱 Roblox Account Log")
+st.set_page_config(page_title="Roblox Monitor Pro", page_icon="🎮", layout="wide")
+st.title("📱 Roblox Account Log & History")
 
 # --- SISTEM PENYIMPANAN PERMANEN ---
 @st.cache_resource
 def get_global_data():
     return {
-        "user_list": {}, # Daftar yang sedang dipantau
-        "history": []    # Riwayat ID yang pernah dimasukkan
+        "user_list": {}, 
+        "history": [],    # Riwayat ID yang pernah diinput
+        "event_logs": []  # Riwayat Kejadian (Last Events)
     }
 
 persistent_data = get_global_data()
+
+# Fungsi Waktu Indonesia (WIB)
+def get_wib_time():
+    tz = pytz.timezone('Asia/Jakarta')
+    return datetime.now(tz).strftime("%d/%m %H:%M:%S")
 
 def get_username(uid):
     try:
@@ -33,49 +41,46 @@ def get_username(uid):
     except:
         return f"User-{uid}"
 
-# --- SIDEBAR: TAMBAH & RIWAYAT ---
+# --- SIDEBAR: KONFIGURASI & LAST EVENTS ---
 with st.sidebar:
-    st.header("Konfigurasi")
+    st.header("⚙️ Konfigurasi")
     
-    # Input ID Manual
     new_id = st.text_input("Masukkan User ID Roblox:", placeholder="Contoh: 3410934690")
-    
     if st.button("Simpan Ke Pantauan"):
         if new_id.isdigit():
             uid = int(new_id)
             if uid not in persistent_data["user_list"]:
                 name = get_username(uid)
                 persistent_data["user_list"][uid] = {"name": name, "last_status": -1}
-                # Tambah ke riwayat jika belum ada
                 if new_id not in persistent_data["history"]:
                     persistent_data["history"].append(new_id)
-                st.success(f"Memantau {name}")
                 st.rerun()
 
-    st.divider()
-    
-    # Fitur Riwayat ID
+    # Dropdown Riwayat ID
     if persistent_data["history"]:
+        st.divider()
         st.subheader("📜 Riwayat ID")
-        selected_history = st.selectbox("Pilih dari riwayat:", ["-- Pilih ID --"] + persistent_data["history"])
-        
-        if selected_history != "-- Pilih ID --":
-            if st.button("Pantau ID Ini"):
+        selected_history = st.selectbox("Pilih ID lama:", ["-- Pilih --"] + persistent_data["history"])
+        if selected_history != "-- Pilih --":
+            if st.button("Pantau Kembali"):
                 uid = int(selected_history)
                 if uid not in persistent_data["user_list"]:
                     name = get_username(uid)
                     persistent_data["user_list"][uid] = {"name": name, "last_status": -1}
-                    st.success(f"Menambah {name} dari riwayat")
                     st.rerun()
-        
-        if st.button("🗑️ Hapus Riwayat"):
-            persistent_data["history"] = []
-            st.rerun()
 
     st.divider()
-    if st.button("🔴 Reset Semua Pantauan"):
-        persistent_data["user_list"] = {}
-        st.rerun()
+    
+    # --- BAGIAN LAST EVENTS (LOG) ---
+    st.subheader("🕒 Last Events (Keluar)")
+    if persistent_data["event_logs"]:
+        for log in reversed(persistent_data["event_logs"][-10:]): # Tampilkan 10 terakhir
+            st.caption(log)
+        if st.button("🗑️ Bersihkan Log"):
+            persistent_data["event_logs"] = []
+            st.rerun()
+    else:
+        st.write("Belum ada aktivitas.")
 
 # --- HALAMAN UTAMA: MONITORING ---
 if persistent_data["user_list"]:
@@ -92,19 +97,24 @@ if persistent_data["user_list"]:
             current_status = user['userPresenceType'] 
             old_status = persistent_data["user_list"][uid]["last_status"]
 
-            # Logika Notifikasi Keluar
+            # Logika Notifikasi & Log Kejadian
             if old_status == 2 and current_status != 2:
-                msg = f"🔴 {name} ({uid}) telah KELUAR dari server game."
+                waktu = get_wib_time()
+                msg = f"🔴 {name} ({uid}) KELUAR pada {waktu}"
+                
+                # Kirim Telegram
                 send_telegram(msg)
+                
+                # Simpan ke Last Events (History Sidebar)
+                persistent_data["event_logs"].append(f"🔴 {waktu} - {name} Keluar")
             
             persistent_data["user_list"][uid]["last_status"] = current_status
 
             # Tampilan
-            col1, col2 = st.columns([4, 1])
+            col1, col2 = st.columns([5, 1])
             with col1:
                 color = "🟢" if current_status == 2 else "🔴"
-                st.info(f"{color} **{name}** ({uid})\n\nStatus: {'IN-GAME' if current_status == 2 else 'OFFLINE'}")
-            
+                st.info(f"{color} **{name}** ({uid}) | Status: {'IN-GAME' if current_status == 2 else 'OFFLINE'}")
             with col2:
                 if st.button("Hapus", key=f"del_{uid}"):
                     del persistent_data["user_list"][uid]
@@ -112,7 +122,7 @@ if persistent_data["user_list"]:
     except:
         st.error("Gagal update data.")
 else:
-    st.write("Belum ada akun yang dipantau. Silakan tambah lewat Sidebar di kiri atas.")
+    st.info("Buka Sidebar (panah kiri atas) untuk menambah akun.")
 
 # Auto Refresh 30 detik
 time.sleep(30)
