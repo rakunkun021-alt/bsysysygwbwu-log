@@ -16,7 +16,7 @@ def send_telegram(message):
         pass
 
 st.set_page_config(page_title="Roblox Monitor Pro", page_icon="🎮", layout="wide")
-st.title("📱 Roblox Permanent Log")
+st.title("📱 Roblox Account Log")
 
 # --- SISTEM PENYIMPANAN PERMANEN ---
 @st.cache_resource
@@ -40,45 +40,53 @@ def get_username(uid):
     except:
         return f"User-{uid}"
 
-# --- SIDEBAR: KONFIGURASI & LAST EVENTS ---
+# --- SIDEBAR DENGAN TAB TERPISAH ---
 with st.sidebar:
-    st.header("⚙️ Konfigurasi")
-    
-    new_id = st.text_input("Tambah User ID:", placeholder="Masukkan angka...")
-    if st.button("Simpan ID"):
-        if new_id.isdigit():
-            uid = int(new_id)
-            if uid not in persistent_data["user_list"]:
-                name = get_username(uid)
-                persistent_data["user_list"][uid] = {"name": name, "last_status": -1}
-                if new_id not in persistent_data["history"]:
-                    persistent_data["history"].append(new_id)
-                st.success(f"Menambah {name}")
-                st.rerun()
+    st.header("Menu Utama")
+    # Membuat dua tab terpisah di dalam sidebar
+    tab_tambah, tab_riwayat = st.tabs(["➕ Tambah", "🕒 Last Events"])
 
-    if persistent_data["history"]:
+    with tab_tambah:
+        st.subheader("Kelola Akun")
+        new_id = st.text_input("User ID Roblox:", placeholder="Masukkan angka...")
+        if st.button("Simpan ID"):
+            if new_id.isdigit():
+                uid = int(new_id)
+                if uid not in persistent_data["user_list"]:
+                    name = get_username(uid)
+                    persistent_data["user_list"][uid] = {"name": name, "last_status": -1}
+                    if new_id not in persistent_data["history"]:
+                        persistent_data["history"].append(new_id)
+                    st.success(f"Menambah {name}")
+                    st.rerun()
+
+        if persistent_data["history"]:
+            st.divider()
+            st.subheader("📜 Riwayat Input")
+            sel = st.selectbox("Pilih ID lama:", ["-- Pilih --"] + persistent_data["history"])
+            if sel != "-- Pilih --" and st.button("Pantau Kembali"):
+                uid = int(sel)
+                if uid not in persistent_data["user_list"]:
+                    name = get_username(uid)
+                    persistent_data["user_list"][uid] = {"name": name, "last_status": -1}
+                    st.rerun()
+
         st.divider()
-        st.subheader("📜 Riwayat ID")
-        sel = st.selectbox("Pilih ID lama:", ["-- Pilih --"] + persistent_data["history"])
-        if sel != "-- Pilih --" and st.button("Pantau Kembali"):
-            uid = int(sel)
-            if uid not in persistent_data["user_list"]:
-                name = get_username(uid)
-                persistent_data["user_list"][uid] = {"name": name, "last_status": -1}
-                st.rerun()
-
-    # --- BAGIAN LAST EVENTS ---
-    st.divider()
-    st.subheader("🕒 Last Events (Keluar)")
-    if persistent_data["event_logs"]:
-        # Tampilkan 10 kejadian terakhir
-        for log in reversed(persistent_data["event_logs"][-10:]):
-            st.caption(log)
-        if st.button("🗑️ Bersihkan Log"):
-            persistent_data["event_logs"] = []
+        if st.button("🔴 Reset Semua"):
+            persistent_data["user_list"] = {}
             st.rerun()
-    else:
-        st.write("Belum ada aktivitas keluar.")
+
+    with tab_riwayat:
+        st.subheader("Kejadian Terakhir")
+        if persistent_data["event_logs"]:
+            # Menampilkan log dengan list yang lebih bersih
+            for log in reversed(persistent_data["event_logs"][-15:]):
+                st.write(log)
+            if st.button("🗑️ Bersihkan Log"):
+                persistent_data["event_logs"] = []
+                st.rerun()
+        else:
+            st.write("Belum ada aktivitas keluar.")
 
 # --- HALAMAN UTAMA: MONITORING ---
 if persistent_data["user_list"]:
@@ -87,19 +95,19 @@ if persistent_data["user_list"]:
         res_call = requests.post("https://presence.roblox.com/v1/presence/users", json={"userIds": uids})
         res = res_call.json()
         
-        st.subheader("Daftar Pantauan")
+        st.subheader("Live Status")
         for user in res.get('userPresences', []):
             uid = user['userId']
             name = persistent_data["user_list"][uid]["name"]
             curr_status = user['userPresenceType'] 
             old_status = persistent_data["user_list"][uid]["last_status"]
 
-            # Logika Notif Keluar & Simpan ke Last Event
+            # Logika Notif Keluar
             if old_status == 2 and curr_status != 2:
                 waktu = get_wib_time()
                 msg = f"🔴 {name} ({uid}) KELUAR Game jam {waktu}"
                 send_telegram(msg)
-                persistent_data["event_logs"].append(f"🔴 {waktu} - {name} Keluar")
+                persistent_data["event_logs"].append(f"🔴 **{waktu}** - {name}")
             
             persistent_data["user_list"][uid]["last_status"] = curr_status
 
@@ -114,11 +122,7 @@ if persistent_data["user_list"]:
     except:
         st.error("Gagal update data.")
 else:
-    st.info("Gunakan Sidebar untuk menambah akun.")
-
-# Tambahan: Pesan agar Cron-job mengenali halaman
-st.write("---")
-st.caption("Status: Active Monitoring Background")
+    st.info("Buka Sidebar (klik panah kiri atas) lalu pilih Tab 'Tambah' untuk memasukkan akun.")
 
 time.sleep(30)
 st.rerun()
