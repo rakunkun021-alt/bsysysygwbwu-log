@@ -45,7 +45,8 @@ if persistent_data["user_list"]:
     uids = list(persistent_data["user_list"].keys())
     
     try:
-        res = requests.post("https://presence.roblox.com/v1/presence/users", json={"userIds": uids}).json()
+        res_call = requests.post("https://presence.roblox.com/v1/presence/users", json={"userIds": uids})
+        res = res_call.json()
         
         st.subheader("Daftar Pantauan")
         for user in res.get('userPresences', []):
@@ -59,7 +60,20 @@ if persistent_data["user_list"]:
                 msg = f"🔴 {name} ({uid}) telah KELUAR dari server game."
                 send_telegram(msg)
             
-            # Notifikasi MASUK (🟢) sudah dihapus sesuai permintaan kamu.
-
             # Update status di memori server
-            persistent_data
+            persistent_data["user_list"][uid]["last_status"] = current_status
+
+            # Tampilan Web
+            color = "🟢" if current_status == 2 else "🔴"
+            st.info(f"{color} **{name}** ({uid})\n\nStatus: {'IN-GAME' if current_status == 2 else 'OFFLINE'}")
+
+    except Exception as e:
+        st.error(f"Gagal update data: {e}")
+
+if st.button("Hapus Semua Data"):
+    persistent_data["user_list"] = {}
+    st.rerun()
+
+# Auto Refresh 30 detik
+time.sleep(30)
+st.rerun()
