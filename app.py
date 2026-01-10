@@ -1,54 +1,71 @@
 import streamlit as st
 import requests
+import time
 
-# Konfigurasi Tampilan
-st.set_page_config(page_title="Roblox Log", page_icon="🔴")
-st.title("📱 My Roblox Account Log")
+# --- DATA TELEGRAM KAMU ---
+TOKEN = "8243788772:AAGrR-XFydCLZKzykofsU8qYXhkXg26qt2k"
+CHAT_ID = "8170247984"
 
-# Penyimpanan ID Sementara
-if 'user_ids' not in st.session_state:
-    st.session_state.user_ids = []
+def send_telegram(message):
+    try:
+        url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+        payload = {"chat_id": CHAT_ID, "text": message}
+        requests.post(url, json=payload)
+    except Exception as e:
+        print(f"Error kirim Telegram: {e}")
 
-# Input ID Baru via Web
+st.set_page_config(page_title="Roblox Log Telegram", page_icon="🎮")
+st.title("📱 Roblox Account Log")
+st.caption("Notifikasi akan dikirim otomatis ke Telegram kamu.")
+
+# Inisialisasi data akun
+if 'user_data' not in st.session_state:
+    st.session_state.user_data = {}
+
+def get_username(user_id):
+    try:
+        res = requests.get(f"https://users.roblox.com/v1/users/{user_id}")
+        return res.json().get('name', f"User-{user_id}")
+    except:
+        return f"User-{user_id}"
+
+# Menu Input
 with st.expander("➕ Tambah Akun Baru"):
     new_id = st.text_input("Masukkan User ID Roblox:")
     if st.button("Simpan Akun"):
         if new_id.isdigit():
-            st.session_state.user_ids.append(int(new_id))
-            st.success(f"ID {new_id} ditambahkan!")
-        else:
-            st.error("ID harus berupa angka!")
+            uid = int(new_id)
+            if uid not in st.session_state.user_data:
+                name = get_username(uid)
+                # Set status awal ke -1 agar tidak langsung kirim notif saat baru ditambah
+                st.session_state.user_data[uid] = {'name': name, 'status': -1}
+                st.success(f"Berhasil menambah {name}")
+                st.rerun()
 
-# Tombol Reset
-if st.button("Reset Semua Daftar"):
-    st.session_state.user_ids = []
-    st.rerun()
-
-# Cek Status ke API Roblox
-if st.session_state.user_ids:
-    st.subheader("Live Status")
-    url = "https://presence.roblox.com/v1/presence/users"
+# Proses Pengecekan
+if st.session_state.user_data:
+    user_ids = list(st.session_state.user_data.keys())
+    url_presence = "https://presence.roblox.com/v1/presence/users"
+    
     try:
-        response = requests.post(url, json={"userIds": st.session_state.user_ids})
-        data = response.json()['userPresences']
+        response = requests.post(url_presence, json={"userIds": user_ids})
+        presences = response.json().get('userPresences', [])
 
-        for user in data:
-            # Penentuan Indikator
-            is_ingame = user['userPresenceType'] == 2
-            icon = "🟢" if is_ingame else "🔴"
-            status_txt = "IN-SERVER" if is_ingame else "OUTSIDE/OFFLINE"
-            location = user.get('lastLocation', 'Unknown') if is_ingame else "-"
+        st.subheader("Daftar Pantauan")
+        for user in presences:
+            uid = user['userId']
+            name = st.session_state.user_data[uid]['name']
+            current_status = user['userPresenceType'] # 2 = In-Game
+            last_status = st.session_state.user_data[uid]['status']
 
-            # Tampilan Ringan per Akun
-            st.info(f"{icon} **ID: {user['userId']}**\n\nStatus: {status_txt} | Lokasi: {location}")
+            # --- LOGIKA NOTIFIKASI ---
+            # Jika status berubah dari In-Game ke Keluar
+            if last_status == 2 and current_status != 2:
+                msg = f"🔴 NOTIF: {name} ({uid}) telah KELUAR dari server game."
+                send_telegram(msg)
+                st.toast(msg) # Muncul notif kecil di web
             
-    except Exception as e:
-        st.error("Gagal mengambil data dari Roblox.")
-else:
-    st.write("Daftar akun kosong. Silakan tambah ID di atas.")
-
-# Refresh otomatis setiap 30 detik
-st.empty()
-import time
-time.sleep(30)
-st.rerun()
+            # Jika status berubah dari Luar ke Masuk Server
+            elif (last_status != 2 and last_status != -1) and current_status == 2:
+                msg = f"🟢 NOTIF: {name} ({uid}) telah MASUK ke server game!"
+                send_
