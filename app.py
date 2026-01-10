@@ -13,15 +13,16 @@ def send_telegram(message):
     except:
         pass
 
-st.set_page_config(page_title="Roblox Monitor Non-Stop", page_icon="🎮")
-st.title("📱 Roblox Account Log")
+st.set_page_config(page_title="Roblox Monitor 24/7", page_icon="🎮")
+st.title("📱 Roblox Permanent Log")
 
-# --- SISTEM PENYIMPANAN AGAR TIDAK HILANG ---
+# --- SISTEM PENYIMPANAN STABIL ---
+# Menggunakan cache_resource agar data menempel di server Streamlit
 @st.cache_resource
-def get_global_data():
-    return {"user_list": {}}
+def get_database():
+    return {"users": {}}
 
-persistent_data = get_global_data()
+db = get_database()
 
 def get_username(uid):
     try:
@@ -30,50 +31,54 @@ def get_username(uid):
     except:
         return f"User-{uid}"
 
-with st.expander("➕ Tambah Akun Baru"):
-    new_id = st.text_input("User ID Roblox:")
-    if st.button("Simpan"):
+# --- MENU TAMBAH ---
+with st.sidebar:
+    st.header("Settings")
+    new_id = st.text_input("Tambah User ID:")
+    if st.button("Simpan ID"):
         if new_id.isdigit():
             uid = int(new_id)
-            if uid not in persistent_data["user_list"]:
+            if uid not in db["users"]:
                 name = get_username(uid)
-                persistent_data["user_list"][uid] = {"name": name, "last_status": -1}
-                st.success(f"Berhasil menambah {name}")
+                db["users"][uid] = {"name": name, "status": -1}
+                st.success(f"Monitoring {name}")
                 st.rerun()
-
-if persistent_data["user_list"]:
-    uids = list(persistent_data["user_list"].keys())
     
+    if st.button("🔴 Hapus Semua Data"):
+        db["users"] = {}
+        st.rerun()
+
+# --- PROSES MONITORING ---
+if db["users"]:
+    uids = list(db["users"].keys())
     try:
-        res_call = requests.post("https://presence.roblox.com/v1/presence/users", json={"userIds": uids})
-        res = res_call.json()
+        res = requests.post("https://presence.roblox.com/v1/presence/users", json={"userIds": uids}).json()
         
-        st.subheader("Daftar Pantauan")
         for user in res.get('userPresences', []):
             uid = user['userId']
-            name = persistent_data["user_list"][uid]["name"]
-            current_status = user['userPresenceType'] # 2 = In-Game
-            old_status = persistent_data["user_list"][uid]["last_status"]
+            name = db["users"][uid]["name"]
+            curr_status = user['userPresenceType'] # 2 = In-Game
+            old_status = db["users"][uid]["status"]
 
-            # --- LOGIKA NOTIFIKASI (HANYA KELUAR) ---
-            if old_status == 2 and current_status != 2:
-                msg = f"🔴 {name} ({uid}) telah KELUAR dari server game."
-                send_telegram(msg)
+            # Notif Hanya Keluar
+            if old_status == 2 and curr_status != 2:
+                send_telegram(f"🔴 {name} ({uid}) KELUAR Game")
             
-            # Update status di memori server
-            persistent_data["user_list"][uid]["last_status"] = current_status
+            db["users"][uid]["status"] = curr_status
 
-            # Tampilan Web
-            color = "🟢" if current_status == 2 else "🔴"
-            st.info(f"{color} **{name}** ({uid})\n\nStatus: {'IN-GAME' if current_status == 2 else 'OFFLINE'}")
+            # Tampilan List
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                color = "🟢" if curr_status == 2 else "🔴"
+                st.info(f"{color} **{name}** ({uid})")
+            with col2:
+                if st.button("Hapus", key=f"del_{uid}"):
+                    del db["users"][uid]
+                    st.rerun()
+    except:
+        st.error("API Error")
 
-    except Exception as e:
-        st.error(f"Gagal update data: {e}")
-
-if st.button("Hapus Semua Data"):
-    persistent_data["user_list"] = {}
-    st.rerun()
-
-# Auto Refresh 30 detik
+# Trik agar aplikasi tetap aktif saat dibuka
+st.caption("Aplikasi ini akan terus memantau selama tab ini atau Cron-job aktif.")
 time.sleep(30)
 st.rerun()
