@@ -49,22 +49,4 @@ st.markdown("""
     .online { background-color: #2ecc71; box-shadow: 0 0 8px #2ecc71; }
     .offline { background-color: #e74c3c; }
     .username-text {
-        font-size: 13px;
-        font-weight: bold;
-        color: white;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
-    .id-text { font-size: 10px; color: #888; margin-top: 4px; }
-    .stButton > button {
-        width: 100% !important;
-        height: 26px !important;
-        font-size: 11px !important;
-        padding: 0px !important;
-        margin-top: 8px !important;
-    }
-</style>
-""", unsafe_allow_html=True)
-
-def send_telegram(token, chat_id, message):
+        font-size:
