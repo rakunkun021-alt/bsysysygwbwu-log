@@ -5,9 +5,32 @@ import requests, time, json
 st.set_page_config(page_title="Monitor 16:10", layout="wide")
 st.markdown("""
 <style>
-    [data-testid="stHorizontalBlock"] { display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; gap: 8px !important; }
-    [data-testid="column"] { width: calc(25% - 10px) !important; flex: 0 0 calc(25% - 10px) !important; min-width: calc(25% - 10px) !important; margin-bottom: 10px !important; }
-    .card { border: 1px solid #444; border-radius: 8px; background: #1a1c24; padding: 10px 5px; aspect-ratio: 16 / 10; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+    /* Paksa 4 kolom berjejer ke samping di HP */
+    [data-testid="stHorizontalBlock"] { 
+        display: flex !important; 
+        flex-direction: row !important; 
+        flex-wrap: wrap !important; 
+        gap: 8px !important; 
+    }
+    /* Kunci lebar 25% agar 1 baris isi 4 ID */
+    [data-testid="column"] { 
+        width: calc(25% - 10px) !important; 
+        flex: 0 0 calc(25% - 10px) !important; 
+        min-width: calc(25% - 10px) !important; 
+        margin-bottom: 10px !important; 
+    }
+    /* Box Rasio 16:10 */
+    .card { 
+        border: 1px solid #444; 
+        border-radius: 8px; 
+        background: #1a1c24; 
+        padding: 10px 5px; 
+        aspect-ratio: 16 / 10; 
+        display: flex; 
+        flex-direction: column; 
+        justify-content: center; 
+        align-items: center; 
+    }
     .row { display: flex; align-items: center; gap: 6px; width: 100%; justify-content: center; }
     .dot { height: 10px; width: 10px; border-radius: 50%; flex-shrink: 0; }
     .on { background: #2ecc71; box-shadow: 0 0 5px #2ecc71; }
@@ -20,21 +43,17 @@ st.markdown("""
 
 def send_tg(tk, ci, msg):
     if tk and ci:
-        try: requests.post(f"https://api.telegram.org/bot{tk}/sendMessage", json={"chat_id":ci, "text":msg}, timeout=5)
-        except: pass
+        try: 
+            requests.post(f"https://api.telegram.org/bot{tk}/sendMessage", json={"chat_id":ci, "text":msg}, timeout=5)
+        except: 
+            pass
 
 # --- DB SESSION ---
 if 'db' not in st.session_state:
-    st.session_state.db = {"groups": {"Utama": {"tk": "8243788772:AAGrR-XFydCLZKzykofsU8qYXhkXg26qt2k", "ci": "8170247984", "members": {}}}, "h_id": []}
-db = st.session_state.db
-
-# --- SIDEBAR ---
-with st.sidebar:
-    st.header("⚙️ Admin")
-    with st.expander("💾 Backup"):        if st.button("Restore"):
-            try: st.session_state.db = json.loads(rc); st.rerun()
-            except: st.error("Gagal")
-    
+    st.session_state.db = {
+        "groups": {
+            "Utama": {
+                "tk": "82437    
     target = st.selectbox("Grup:", list(db["groups"].keys()))
     u_in = st.text_input("ID Roblox:")
     if st.button("Tambah"):
