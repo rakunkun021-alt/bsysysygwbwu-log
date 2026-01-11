@@ -1,10 +1,8 @@
 import streamlit as st
 import requests, time, json, os
 
-# --- DATABASE PERMANEN ---
 DB = "monitor_db.json"
-
-def load_data():
+def load():
     if os.path.exists(DB):
         try:
             with open(DB, "r") as f:
@@ -15,40 +13,21 @@ def load_data():
         except: pass
     return {"groups": {}, "h_id": []}
 
-def save_data(d):
-    with open(DB, "w") as f:
-        json.dump(d, f)
+def save(d):
+    with open(DB, "w") as f: json.dump(d, f)
 
-# Inisialisasi
-if 'db' not in st.session_state:
-    st.session_state.db = load_data()
+if 'db' not in st.session_state: st.session_state.db = load()
 db = st.session_state.db
 
-st.set_page_config(page_title="Roblox Monitor", layout="wide")
-
-# CSS Minimalis (Hanya untuk titik status dan lebar kolom)
-st.markdown("""
-<style>
-    .block-container { padding: 1rem !important; }
-    .dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 5px; }
-    .on { background-color: #00ff00; box-shadow: 0 0 5px #00ff00; }
-    .off { background-color: #ff0000; }
-    div[data-testid="column"] { width: auto !important; flex: unset !important; }
-    .stExpander { border: 1px solid #333 !important; }
-</style>
-""", unsafe_allow_html=True)
+st.set_page_config(page_title="Monitor", layout="wide")
+st.markdown('<style>.block-container{padding:0.5rem!important;} .stButton>button{width:100%!important; white-space:nowrap!important;} .list-row{display:flex; align-items:center; background:#1e1e1e; border:1px solid #333; padding:8px; border-radius:5px; flex-grow:1;} .dot{height:10px; width:10px; border-radius:50%; display:inline-block; margin-right:10px;} .on{background:#0f0; box-shadow:0 0 5px #0f0;} .off{background:#f00;} .u-n{font-size:13px; color:#fff; font-weight:bold;}</style>', unsafe_allow_html=True)
 
 def notify(tk, ci, msg):
     if tk and ci:
-        try: requests.post(f"https://api.telegram.org/bot{tk}/sendMessage", json={"chat_id":ci,"text":msg}, timeout=5)
+        try: requests.post("https://api.telegram.org/bot"+tk+"/sendMessage", json={"chat_id":ci,"text":msg}, timeout=5)
         except: pass
 
-# --- SIDEBAR ---
 with st.sidebar:
-    st.title("⚙️ Admin")
-    
-    # 1. Management Grup
-    with st.expander("➕ Tambah Grup Baru"):
-        g_name = st.text_input("Nama Grup")
-        g_token = st.text_input("Token Bot")
-        g_chatid = st.text_input("Chat
+    st.header("Admin")
+    with st.expander("Grup", expanded=True):
+        gn, tk, ci = st.text_
