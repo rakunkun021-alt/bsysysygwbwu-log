@@ -13,7 +13,8 @@ def send_telegram(token, chat_id, message):
         pass
 
 # Setup Halaman
-st.set_page_config(page_title="Roblox Multi-Group", page_icon="🎮", layout="wide", initial_sidebar_state="expanded")
+# Pastikan baris ini ada 'layout="wide"'
+st.set_page_config(page_title="Roblox Multi-Group", page_icon="🎮", layout="wide", initial_sidebar_state="expanded")st.set_page_config(page_title="Roblox Multi-Group", page_icon="🎮", layout="wide", initial_sidebar_state="expanded")
 st.title("📱 Roblox Group Monitor")
 
 # --- SISTEM PENYIMPANAN DATA ---
