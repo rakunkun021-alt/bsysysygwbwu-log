@@ -1,105 +1,171 @@
 import streamlit as st
 import requests, time, json, os
 
-# --- DATABASE ---
+# --- DATABASE PERMANEN ---
 DB = "monitor_db.json"
-def load():
+
+def load_data():
     if os.path.exists(DB):
         try:
-            with open(DB, "r") as f: return json.load(f)
-        except: return {"groups":{}, "h_id":[]}
-    return {"groups":{}, "h_id":[]}
+            with open(DB, "r") as f:
+                data = json.load(f)
+                # Pastikan struktur data lengkap
+                if "groups" not in data: data["groups"] = {}
+                if "h_id" not in data: data["h_id"] = []
+                if "tokens" not in data: data["tokens"] = {}
+                return data
+        except:
+            return {"groups": {}, "h_id": [], "tokens": {}}
+    return {"groups": {}, "h_id": [], "tokens": {}}
 
-def save(d):
-    with open(DB, "w") as f: json.dump(d, f)
+def save_data(data):
+    with open(DB, "w") as f:
+        json.dump(data, f, indent=4)
 
-if 'db' not in st.session_state: st.session_state.db = load()
+# Inisialisasi Data
+if 'db' not in st.session_state:
+    st.session_state.db = load_data()
+
 db = st.session_state.db
 
 # --- UI CONFIG ---
-st.set_page_config(page_title="Monitor", layout="wide")
+st.set_page_config(page_title="Roblox Monitor", layout="wide")
 st.markdown("""
 <style>
     .block-container { padding: 0.5rem !important; }
-    [data-testid="stHorizontalBlock"] { display: flex !important; gap: 2px !important; flex-wrap: nowrap !important; }
-    [data-testid="column"] { flex: 1 1 25% !important; min-width: 0 !important; }
-    .list-item { display: flex; align-items: center; border: 1px solid #333; background: #1e1e1e; padding: 2px 5px; border-radius: 2px; height: 26px; }
-    .dot { height: 7px; width: 7px; border-radius: 50%; display: inline-block; margin-right: 5px; }
-    .on { background: #0f0; box-shadow: 0 0 4px #0f0; }
+    /* Pastikan list turun ke bawah (1 kolom penuh) */
+    [data-testid="column"] { width: 100% !important; flex: 1 1 100% !important; }
+    
+    .list-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border: 1px solid #333;
+        background: #1e1e1e;
+        padding: 5px 10px;
+        border-radius: 4px;
+        margin-bottom: 5px;
+        height: 35px;
+    }
+    .user-info { display: flex; align-items: center; gap: 8px; }
+    .dot { height: 8px; width: 8px; border-radius: 50%; display: inline-block; }
+    .on { background: #0f0; box-shadow: 0 0 5px #0f0; }
     .off { background: #f00; }
-    .u-n { font-size: 9px; font-weight: bold; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .stButton>button { background: transparent !important; border: none !important; color: #f44 !important; font-size: 14px !important; height: 26px !important; width: 100% !important; padding: 0 !important; }
+    .u-n { font-size: 11px; font-weight: bold; color: #fff; }
+    
+    /* Tombol Sampah Sejajar */
+    .stButton>button {
+        background: transparent !important;
+        border: none !important;
+        color: #ff4b4b !important;
+        font-size: 16px !important;
+        padding: 0 !important;
+        width: 30px !important;
+        height: 30px !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 def notify(tk, ci, msg):
     if tk and ci:
-        try: requests.post(f"https://api.telegram.org/bot{tk}/sendMessage", json={"chat_id":ci,"text":msg}, timeout=5)
+        try:
+            requests.post(f"https://api.telegram.org/bot{tk}/sendMessage", 
+                          json={"chat_id": ci, "text": msg}, timeout=5)
         except: pass
 
 # --- SIDEBAR ADMIN ---
 with st.sidebar:
     st.header("Admin")
-    with st.expander("Grup", expanded=True):
-        gn = st.text_input("Nama")
-        tk = st.text_input("Token")
-        ci = st.text_input("ChatID")
+    with st.expander("➕ Tambah/Edit Grup", expanded=False):
+        gn = st.text_input("Nama Grup")
+        tk = st.text_input("Token Bot")
+        ci = st.text_input("Chat ID")
         if st.button("Simpan Grup"):
             if gn and tk and ci:
-                db["groups"][gn] = {"tk":tk, "ci":ci, "members":{}}
-                save(db); st.rerun()
-    
+                db["groups"][gn] = {"tk": tk, "ci": ci, "members": {}}
+                save_data(db)
+                st.rerun()
+
     if db["groups"]:
         st.divider()
         target = st.selectbox("Pilih Grup", list(db["groups"].keys()))
-        uid = st.text_input("ID Roblox")
-        if st.button("Tambah ID"):
+        uid = st.text_input("Masukkan ID Roblox")
+        if st.button("Tambah ke List"):
             if uid.isdigit():
                 try:
                     h = {"User-Agent": "Mozilla/5.0"}
                     r = requests.get(f"https://users.roblox.com/v1/users/{uid}", headers=h, timeout=10)
                     if r.status_code == 200:
-                        db["groups"][target]["members"][uid] = {"name": r.json().get("name", uid), "last":-1}
+                        name = r.json().get("name", uid)
+                        db["groups"][target]["members"][uid] = {"name": name, "last": -1}
                         if uid not in db["h_id"]: db["h_id"].append(uid)
-                        save(db); st.rerun()
-                except: st.error("API Error")
+                        save_data(db)
+                        st.rerun()
+                    else: st.error("ID tidak ditemukan")
+                except: st.error("Koneksi API Roblox Gagal")
+
+    with st.expander("📜 Riwayat ID"):
+        for hid in db["h_id"]:
+            c1, c2 = st.columns([4, 1])
+            c1.caption(hid)
+            if c2.button("❌", key=f"hist_{hid}"):
+                db["h_id"].remove(hid)
+                save_data(db); st.rerun()
 
 # --- DASHBOARD UTAMA ---
 st.title("Roblox Monitor")
+
 if not db["groups"]:
-    st.info("Grup belum ada. Isi data di Sidebar lalu klik 'Simpan Grup'.")
+    st.info("Gunakan Sidebar untuk menambah Grup dan Token.")
 
 for gn, info in db["groups"].items():
-    with st.expander(gn, expanded=True):
-        m_list = info.get("members", {})
-        if not m_list:
-            st.caption("Grup kosong. Tambah ID di Sidebar.")
+    with st.expander(f"📍 {gn}", expanded=True):
+        members = info.get("members", {})
+        if not members:
+            st.caption("Belum ada ID di grup ini.")
             continue
             
-        uids = list(m_list.keys())
+        uids = list(members.keys())
         try:
-            res = requests.post("https://presence.roblox.com/v1/presence/users", json={"userIds":uids}, timeout=10).json()
-            pres = {str(p['userId']): p['userPresenceType'] for p in res.get('userPresences', [])}
-            
-            for j in range(0, len(uids), 4):
-                cols = st.columns(4)
-                for i, u_id in enumerate(uids[j:j+4]):
-                    m = m_list[u_id]
-                    cur = pres.get(u_id, 0)
-                    # Logika Notif Keluar
+            # Batch request untuk efisiensi
+            res = requests.post("https://presence.roblox.com/v1/presence/users", 
+                                json={"userIds": [int(x) for x in uids]}, timeout=10)
+            if res.status_code == 200:
+                pres_data = res.json().get('userPresences', [])
+                pres_dict = {str(p['userId']): p['userPresenceType'] for p in pres_data}
+                
+                # Render List (Kebawah)
+                for user_id in uids:
+                    m = members[user_id]
+                    cur = pres_dict.get(user_id, 0)
+                    
+                    # Notifikasi jika keluar (2 = InGame)
                     if m.get("last") == 2 and cur != 2 and m.get("last") != -1:
-                        notify(info["tk"], info["ci"], f"🔴 {m['name']} KELUAR")
+                        notify(info["tk"], info["ci"], f"🔴 {m['name']} KELUAR GAME")
                     
-                    db["groups"][gn]["members"][u_id]["last"] = cur
-                    save(db)
+                    db["groups"][gn]["members"][user_id]["last"] = cur
+                    save_data(db)
                     
-                    with cols[i]:
-                        c_l, c_r = st.columns([5,1])
-                        c_l.markdown(f'<div class="list-item"><span class="dot {"on" if cur==2 else "off"}"></span><span class="u-n">{m["name"]}</span></div>', unsafe_allow_html=True)
-                        if c_r.button("🗑️", key=f"d{gn}{u_id}"):
-                            del db["groups"][gn]["members"][u_id]; save(db); st.rerun()
+                    # Tampilan List Item Sejajar
+                    col_item, col_del = st.columns([9, 1])
+                    with col_item:
+                        st.markdown(f'''
+                            <div class="list-item">
+                                <div class="user-info">
+                                    <span class="dot {"on" if cur==2 else "off"}"></span>
+                                    <span class="u-n">{m["name"]} ({user_id})</span>
+                                </div>
+                            </div>
+                        ''', unsafe_allow_html=True)
+                    with col_del:
+                        if st.button("🗑️", key=f"del_{gn}_{user_id}"):
+                            del db["groups"][gn]["members"][user_id]
+                            save_data(db); st.rerun()
+            else:
+                st.warning("API Roblox sedang sibuk (Rate Limited)")
         except:
             st.error("Gagal update status")
 
+# Auto Refresh
 time.sleep(15)
 st.rerun()
