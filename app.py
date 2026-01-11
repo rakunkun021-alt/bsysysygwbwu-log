@@ -1,23 +1,23 @@
 import streamlit as st
 import requests, time, json, os
 
-DB_FILE = "monitor_db.json"
-
-def load_db():
-    if os.path.exists(DB_FILE):
+# --- DB PERMANEN ---
+DB = "monitor_db.json"
+def load():
+    if os.path.exists(DB):
         try:
-            with open(DB_FILE, "r") as f: return json.load(f)
+            with open(DB, "r") as f: return json.load(f)
         except: return {"groups": {}, "h_tk": [], "h_id": []}
     return {"groups": {}, "h_tk": [], "h_id": []}
 
-def save_db(data):
-    with open(DB_FILE, "w") as f: json.dump(data, f)
+def save(d):
+    with open(DB, "w") as f: json.dump(d, f)
 
-if 'db' not in st.session_state:
-    st.session_state.db = load_db()
+if 'db' not in st.session_state: st.session_state.db = load()
 db = st.session_state.db
 
-st.set_page_config(page_title="Monitor 16:10", layout="wide")
+# --- UI (4 KOLOM, 16:10, RESOLUSI KECIL) ---
+st.set_page_config(page_title="Monitor", layout="wide")
 st.markdown("""
 <style>
     .block-container { padding: 0.5rem !important; }
@@ -28,4 +28,16 @@ st.markdown("""
     .on { background: #2ecc71; box-shadow: 0 0 4px #2ecc71; }
     .off { background: #e74c3c; }
     .u-n { font-size: 8px; font-weight: bold; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 95%; }
-    .u-i { font-size: 6px; color
+    .u-i { font-size: 6px; color: #888; margin-top: 1px; }
+    .stButton>button { width: 100% !important; background: transparent !important; border: 0.5px solid #444 !important; color: #ff4b4b !important; height: 18px !important; font-size: 10px !important; padding: 0 !important; margin-top: 2px !important; }
+</style>
+""", unsafe_allow_html=True)
+
+def notify(tk, ci, msg):
+    if tk and ci:
+        try: requests.post(f"https://api.telegram.org/bot{tk}/sendMessage", json={"chat_id":ci, "text":msg}, timeout=5)
+        except: pass
+
+# --- SIDEBAR ---
+with st.sidebar:
+    with
