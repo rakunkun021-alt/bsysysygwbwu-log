@@ -6,7 +6,7 @@ import json
 # --- CONFIG & UI STYLE ---
 st.set_page_config(page_title="Roblox Monitor", layout="wide")
 
-# CSS untuk konsistensi Grid 4 Kolom dan Rasio 16:10
+# CSS UNTUK GRID KONSISTEN & RASIO 16:10
 st.markdown("""
     <style>
     [data-testid="stHorizontalBlock"] {
@@ -15,6 +15,7 @@ st.markdown("""
         gap: 5px !important;
         justify-content: flex-start !important;
     }
+    /* Memaksa kolom tetap 25% lebar layar (4 per baris) */
     [data-testid="column"] {
         flex: 1 1 calc(25% - 10px) !important;
         min-width: 80px !important;
@@ -64,8 +65,6 @@ st.markdown("""
         font-size: 10px !important;
         padding: 0px !important;
         margin-top: 2px !important;
-        background-color: #2c2f38 !important;
-        border: none !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -80,4 +79,14 @@ def send_telegram(token, chat_id, message):
 # --- DATABASE SESSION ---
 if 'db' not in st.session_state:
     st.session_state.db = {
-        "groups": {"Utama": {"token": "8243788772:AAG
+        "groups": {"Utama": {"token": "8243788772:AAGrR-XFydCLZKzykofsU8qYXhkXg26qt2k", "chat_id": "8170247984", "members": {}}},
+        "h_id": [], "h_tk": ["8243788772:AAGrR-XFydCLZKzykofsU8qYXhkXg26qt2k"], "h_ci": ["8170247984"]
+    }
+
+db = st.session_state.db
+
+# --- SIDEBAR ---
+with st.sidebar:
+    st.header("⚙️ Admin")
+    
+    with st.expander("💾
