@@ -4,34 +4,35 @@ import time
 import json
 
 # --- KONFIGURASI HALAMAN ---
-st.set_page_config(page_title="Roblox Monitor 16:10", layout="wide")
+st.set_page_config(page_title="Roblox Monitor Pro", layout="wide")
 
-# CSS KHUSUS UNTUK MEMAKSA 4 KOLOM DI HP & RASIO 16:10
+# CSS UNTUK PAKSA 4 KOLOM DI HP & RASIO 16:10
 st.markdown("""
 <style>
-    /* Paksa kolom tetap berjejer ke samping (tidak menumpuk) di HP */
+    /* Memaksa layout tetap menyamping (4 kolom) bahkan di layar HP */
     [data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-direction: row !important;
         flex-wrap: wrap !important;
         align-items: flex-start !important;
         justify-content: flex-start !important;
-        gap: 8px !important;
+        gap: 6px !important;
     }
 
-    /* Kunci lebar tiap kolom agar pas 4 per baris */
+    /* Kunci lebar kolom tepat 25% minus gap agar pas 4 per baris */
     [data-testid="column"] {
-        width: calc(25% - 8px) !important;
-        flex: 0 0 calc(25% - 8px) !important;
-        min-width: calc(25% - 8px) !important;
+        width: calc(25% - 6px) !important;
+        flex: 0 0 calc(25% - 6px) !important;
+        min-width: calc(25% - 6px) !important;
+        margin-bottom: 5px !important;
     }
 
-    /* Box Monitoring Rasio 16:10 */
+    /* Box Rasio 16:10 */
     .card-roblox {
         border: 1px solid #444;
-        border-radius: 8px;
+        border-radius: 6px;
         background-color: #1a1c24;
-        padding: 10px 5px;
+        padding: 8px 4px;
         aspect-ratio: 16 / 10;
         display: flex;
         flex-direction: column;
@@ -45,13 +46,13 @@ st.markdown("""
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 5px;
+        gap: 4px;
         width: 100%;
     }
 
     .status-dot { 
-        height: 10px; 
-        width: 10px; 
+        height: 8px; 
+        width: 8px; 
         border-radius: 50%; 
         flex-shrink: 0;
     }
@@ -59,22 +60,22 @@ st.markdown("""
     .offline { background-color: #e74c3c; }
 
     .username-text { 
-        font-size: 11px; 
+        font-size: 10px; 
         font-weight: bold; 
         color: white;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
     }
-    .id-text { font-size: 9px; color: #888; }
+    .id-text { font-size: 8px; color: #888; }
 
-    /* Tombol Hapus agar kecil dan rapi di bawah kartu */
+    /* Tombol Hapus Kecil */
     .stButton > button {
         width: 100% !important;
-        height: 24px !important;
-        font-size: 9px !important;
+        height: 22px !important;
+        font-size: 8px !important;
         padding: 0px !important;
-        margin-top: 4px !important;
+        margin-top: 3px !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -86,7 +87,7 @@ def send_telegram(token, chat_id, message):
         requests.post(url, json={"chat_id": chat_id, "text": message}, timeout=5)
     except: pass
 
-# --- DATABASE ---
+# --- DATABASE SESSION ---
 if 'db' not in st.session_state:
     st.session_state.db = {
         "groups": {
@@ -127,7 +128,7 @@ with st.sidebar:
             except: st.error("Gagal")
 
 # --- MONITORING ---
-st.title("Roblox Monitor Pro")
+st.title("Monitor 16:10 Pro")
 
 for g_name, g_data in db["groups"].items():
     if g_data["members"]:
@@ -139,26 +140,11 @@ for g_name, g_data in db["groups"].items():
                              json={"userIds": uids}, timeout=5).json()
             pres = {str(p['userId']): p['userPresenceType'] for p in r.get('userPresences', [])}
             
-            # MEMBUAT GRID 4 KOLOM (Paksa ke samping)
+            # MEMBUAT GRID 4 KOLOM
             cols = st.columns(4)
             for i, uid in enumerate(uids):
                 info = g_data["members"][uid]
                 curr = pres.get(uid, 0)
                 
-                # NOTIF KELUAR GAME SAJA
+                # NOTIF KELUAR GAME SAJA (Status 2 pindah ke bukan 2)
                 if info["last"] == 2 and curr != 2 and info["last"] != -1:
-                    send_telegram(g_data["token"], g_data["chat_id"], f"🔴 {info['name']} KELUAR GAME")
-                
-                db["groups"][g_name]["members"][uid]["last"] = curr
-                dot = "online" if curr == 2 else "offline"
-                
-                with cols[i % 4]:
-                    st.markdown(f"""
-                    <div class="card-roblox">
-                        <div class="user-row">
-                            <div class="status-dot {dot}"></div>
-                            <div class="username-text">{info['name']}</div>
-                        </div>
-                        <div class="id-text">{uid}</div>
-                    </div>
-                    """, unsafe
