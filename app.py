@@ -1,135 +1,135 @@
 import streamlit as st
 import requests
 import time
+import json
 
-# --- KONFIGURASI HALAMAN ---
-st.set_page_config(page_title="Roblox Grid Monitor", layout="wide")
+# --- CONFIG & CSS ---
+st.set_page_config(page_title="Roblox Monitor", layout="wide")
 
-# CSS AGAR TAMPILAN KECIL 4 KE SAMPING DI HP
+# CSS Kuat untuk Grid 4 Kolom & Nama Utuh
 st.markdown("""
     <style>
-    [data-testid="stHorizontalBlock"] {
+    div[data-testid="stColumn"] {
+        flex: 1 1 23% !important;
+        min-width: 80px !important;
+        padding: 2px !important;
+    }
+    div[data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-wrap: wrap !important;
-        gap: 4px !important;
-    }
-    [data-testid="column"] {
-        flex: 1 1 23% !important;
-        min-width: 75px !important;
-        max-width: 24% !important;
-        padding: 0px !important;
     }
     .stContainer {
-        border: 1px solid #333;
-        border-radius: 5px;
+        border: 1px solid #444;
+        border-radius: 8px;
+        background-color: #1a1c24;
         padding: 5px;
         text-align: center;
-        background-color: #0e1117;
+        min-height: 100px;
     }
+    small { font-size: 10px; color: #aaa; }
     </style>
     """, unsafe_allow_html=True)
 
 def send_telegram(token, chat_id, message):
     if not token or not chat_id: return
     try:
-        url = f"https://api.telegram.org/bot{token}/sendMessage"
-        requests.post(url, json={"chat_id": chat_id, "text": message}, timeout=5)
+        requests.post(f"https://api.telegram.org/bot{token}/sendMessage", 
+                      json={"chat_id": chat_id, "text": message}, timeout=5)
     except: pass
 
-# --- DATABASE ---
-@st.cache_resource
-def get_db():
-    return {
+# --- SISTEM PENYIMPANAN ---
+if 'db' not in st.session_state:
+    st.session_state.db = {
         "groups": {"Utama": {"token": "8243788772:AAGrR-XFydCLZKzykofsU8qYXhkXg26qt2k", "chat_id": "8170247984", "members": {}}},
-        "h_id": [], 
-        "h_tk": ["8243788772:AAGrR-XFydCLZKzykofsU8qYXhkXg26qt2k"], 
-        "h_ci": ["8170247984"]
+        "h_id": [], "h_tk": ["8243788772:AAGrR-XFydCLZKzykofsU8qYXhkXg26qt2k"], "h_ci": ["8170247984"]
     }
 
-db = get_db()
+db = st.session_state.db
 
-# --- SIDEBAR: KONFIGURASI ---
+# --- SIDEBAR ---
 with st.sidebar:
-    st.header("⚙️ Menu Admin")
+    st.header("⚙️ Konfigurasi")
     
-    # 1. RIWAYAT TOKEN & CHAT ID
-    with st.expander("➕ Grup & Bot"):
-        gn = st.text_input("Nama Grup:")
-        tk_sel = st.selectbox("Riwayat Token (Klik ^):", options=list(dict.fromkeys(db["h_tk"])))
-        tk_new = st.text_input("Atau ketik Token baru:")
-        ci_sel = st.selectbox("Riwayat Chat ID (Klik ^):", options=list(dict.fromkeys(db["h_ci"])))
-        ci_new = st.text_input("Atau ketik Chat ID baru:")
-        
-        f_tk = tk_new if tk_new else tk_sel
-        f_ci = ci_new if ci_new else ci_sel
-
-        if st.button("Simpan Grup"):
-            if gn:
-                db["groups"][gn] = {"token": f_tk, "chat_id": f_ci, "members": {}}
-                if f_tk and f_tk not in db["h_tk"]: 
-                    db["h_tk"].append(f_tk)
-                if f_ci and f_ci not in db["h_ci"]: 
-                    db["h_ci"].append(f_ci)
-                st.success(f"Grup {gn} Aktif")
+    # Fitur Anti Hilang (Backup/Restore)
+    with st.expander("💾 Backup & Restore (Anti Hilang)"):
+        data_str = json.dumps(db)
+        st.text_area("Salin & Simpan Kode Ini ke Catatan HP:", value=data_str, height=100)
+        restore = st.text_input("Tempel Kode Backup di sini untuk Restore:")
+        if st.button("Restore Data"):
+            try:
+                st.session_state.db = json.loads(restore)
                 st.rerun()
+            except: st.error("Kode Salah")
+
+    # Input Bot
+    with st.expander("🤖 Bot & Grup"):
+        gn = st.text_input("Nama Grup Baru:")
+        tk = st.selectbox("Riwayat Token:", options=db["h_tk"])
+        tk_new = st.text_input("Ketik Token Baru (Jika beda):")
+        ci = st.selectbox("Riwayat Chat ID:", options=db["h_ci"])
+        ci_new = st.text_input("Ketik Chat ID Baru (Jika beda):")
+        
+        if st.button("Simpan Grup"):
+            final_tk = tk_new if tk_new else tk
+            final_ci = ci_new if ci_new else ci
+            db["groups"][gn] = {"token": final_tk, "chat_id": final_ci, "members": {}}
+            if final_tk not in db["h_tk"]: db["h_tk"].append(final_tk)
+            if final_ci not in db["h_ci"]: db["h_ci"].append(final_ci)
+            st.rerun()
 
     st.divider()
-
-    # 2. RIWAYAT USER ID
+    
+    # Input ID
     st.subheader("👤 Tambah Akun")
-    tgt = st.selectbox("Pilih Grup Tujuan:", list(db["groups"].keys()))
-    h_sel = st.selectbox("Riwayat User ID (Klik ^):", options=["-- Baru --"] + db["h_id"])
-    u_input = st.text_input("Ketik User ID Roblox:", value="" if h_sel == "-- Baru --" else h_sel)
+    target = st.selectbox("Ke Grup:", list(db["groups"].keys()))
+    h_sel = st.selectbox("Riwayat ID:", options=["-- Baru --"] + db["h_id"])
+    u_input = st.text_input("Input ID Roblox:", value="" if h_sel == "-- Baru --" else h_sel)
 
-    if st.button("Tambahkan ke List"):
+    if st.button("Tambahkan"):
         if u_input.isdigit():
-            uid = int(u_input)
             try:
-                res = requests.get(f"https://users.roblox.com/v1/users/{uid}").json()
-                name = res.get('name', f"User-{uid}")
-                db["groups"][tgt]["members"][uid] = {"name": name, "last_status": -1}
-                if u_input not in db["h_id"]: 
-                    db["h_id"].append(u_input)
-                st.success("Berhasil!")
+                res = requests.get(f"https://users.roblox.com/v1/users/{u_input}").json()
+                name = res.get('name', f"User-{u_input}")
+                db["groups"][target]["members"][u_input] = {"name": name, "last": -1}
+                if u_input not in db["h_id"]: db["h_id"].append(u_input)
                 st.rerun()
-            except: 
-                st.error("ID tidak valid")
+            except: st.error("Gagal")
 
-# --- TAMPILAN UTAMA ---
-st.title("🎮 Monitoring")
+# --- MAIN UI ---
+st.title("🎮 Monitoring Center")
 
 for g_name, g_data in db["groups"].items():
     if g_data["members"]:
-        st.subheader(f"📍 Grup: {g_name}")
+        st.subheader(f"📍 {g_name}")
         uids = list(g_data["members"].keys())
         
         try:
-            res_call = requests.post("https://presence.roblox.com/v1/presence/users", json={"userIds": uids})
-            res = res_call.json()
-            pres = {p['userId']: p['userPresenceType'] for p in res.get('userPresences', [])}
+            r = requests.post("https://presence.roblox.com/v1/presence/users", json={"userIds": uids}).json()
+            pres = {str(p['userId']): p['userPresenceType'] for p in r.get('userPresences', [])}
             
-            # GRID 4 KOLOM
             cols = st.columns(4)
             for i, uid in enumerate(uids):
                 curr = pres.get(uid, 0)
-                old = g_data["members"][uid]["last_status"]
+                old = g_data["members"][uid]["last"]
                 name = g_data["members"][uid]["name"]
                 
-                # Cek Notif Keluar
                 if old == 2 and curr != 2:
-                    send_telegram(g_data["token"], g_data["chat_id"], f"🔴 {name} Keluar Game")
+                    send_telegram(g_data["token"], g_data["chat_id"], f"🔴 {name} Keluar")
                 
-                db["groups"][g_name]["members"][uid]["last_status"] = curr
+                db["groups"][g_name]["members"][uid]["last"] = curr
                 
                 with cols[i % 4]:
-                    with st.container(border=True):
-                        st.write("🟢" if curr == 2 else "🔴")
-                        st.caption(name[:8])
-                        if st.button("🗑️", key=f"del_{g_name}_{uid}"):
-                            del db["groups"][g_name]["members"][uid]
-                            st.rerun()
-        except:
-            st.write("Syncing data...")
+                    st.markdown(f"""
+                    <div class="stContainer">
+                        <h2 style='margin:0;'>{'🟢' if curr==2 else '🔴'}</h2>
+                        <b style='font-size:12px;'>{name}</b><br>
+                        <small>{uid}</small>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    if st.button("🗑️", key=f"del_{g_name}_{uid}"):
+                        del db["groups"][g_name]["members"][uid]
+                        st.rerun()
+        except: st.write("Wait...")
 
 time.sleep(30)
 st.rerun()
