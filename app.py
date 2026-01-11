@@ -8,7 +8,6 @@ def load():
             with open(DB, "r") as f:
                 d = json.load(f)
                 if "groups" not in d: d["groups"] = {}
-                if "h_id" not in d: d["h_id"] = []
                 return d
         except: pass
     return {"groups": {}, "h_id": []}
@@ -23,9 +22,8 @@ st.set_page_config(page_title="Monitor", layout="wide")
 st.markdown('<style>.block-container{padding:0.5rem!important;} .stButton>button{width:100%!important; white-space:nowrap!important;} .dot{height:10px; width:10px; border-radius:50%; display:inline-block; margin-right:8px;} .on{background:#0f0;} .off{background:#f00;} .list-row{display:flex; align-items:center; background:#1e1e1e; border:1px solid #333; padding:8px; border-radius:5px; margin-bottom:2px; flex-grow:1;}</style>', unsafe_allow_html=True)
 
 def notify(tk, ci, msg):
-    if tk and ci:
-        try: requests.post("https://api.telegram.org/bot"+tk+"/sendMessage", json={"chat_id":ci,"text":msg}, timeout=5)
-        except: pass
+    try: requests.post(f"https://api.telegram.org/bot{tk}/sendMessage", json={"chat_id":ci,"text":msg}, timeout=8)
+    except: pass
 
 with st.sidebar:
     st.header("Admin")
@@ -44,14 +42,11 @@ with st.sidebar:
                     r = requests.get("https://users.roblox.com/v1/users/"+uid, headers={"User-Agent":"Mozilla/5.0"}, timeout=10)
                     if r.status_code == 200:
                         db["groups"][target]["members"][uid] = {"name": r.json().get("name", uid), "last":-1}
-                        if uid not in db["h_id"]: db["h_id"].append(uid)
+                        if uid not in db.get("h_id", []): 
+                            if "h_id" not in db: db["h_id"] = []
+                            db["h_id"].append(uid)
                         save(db); st.rerun()
                 except: pass
-    with st.expander("Riwayat"):
-        for hid in db["h_id"]:
-            c1, c2 = st.columns([3,1]); c1.caption(hid)
-            if c2.button("❌", key="h"+hid):
-                db["h_id"].remove(hid); save(db); st.rerun()
 
 st.header("Monitor")
 for gn, info in db["groups"].items():
@@ -64,11 +59,13 @@ for gn, info in db["groups"].items():
             pres = {str(p['userId']): p['userPresenceType'] for p in res.get('userPresences', [])}
             for u_id in uids:
                 m = m_list[u_id]; cur = pres.get(u_id, 0)
-                if m.get("last")==2 and cur!=2 and m.get("last")!=-1:
-                    notify(info["tk"], info["ci"], "🔴 "+m['name']+" KELUAR")
+                # Logika Alert: Jika sebelumnya status 2 (In-Game) dan sekarang bukan 2
+                if m.get("last") == 2 and cur != 2:
+                    notify(info["tk"], info["ci"], f"🔴 {m['name']} KELUAR GAME")
+                
                 db["groups"][gn]["members"][u_id]["last"] = cur
                 save(db); cl, cr = st.columns([0.85, 0.15])
-                with cl: st.markdown('<div class="list-row"><span class="dot '+('on' if cur==2 else 'off')+'"></span><b style="color:#fff;font-size:13px;">'+m['name']+'</b></div>', unsafe_allow_html=True)
+                with cl: st.markdown(f'<div class="list-row"><span class="dot {"on" if cur==2 else "off"}"></span><b style="color:#fff;font-size:13px;">{m["name"]}</b></div>', unsafe_allow_html=True)
                 with cr:
                     if st.button("🗑️", key="del"+gn+u_id):
                         del db["groups"][gn]["members"][u_id]; save(db); st.rerun()
