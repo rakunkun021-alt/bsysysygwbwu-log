@@ -5,26 +5,26 @@ import requests, time, json
 st.set_page_config(page_title="Monitor 16:10", layout="wide")
 st.markdown("""
 <style>
-    /* Paksa 4 kolom menyamping di mobile */
+    /* Paksa 4 kolom tetap berjejer ke samping di HP */
     [data-testid="stHorizontalBlock"] { 
-        display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; gap: 8px !important; 
+        display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; gap: 6px !important; 
     }
-    /* Kunci lebar 25% agar 1 baris isi 4 ID */
+    /* Kunci lebar kolom 25% agar 1 baris isi 4 ID */
     [data-testid="column"] { 
-        width: calc(25% - 10px) !important; flex: 0 0 calc(25% - 10px) !important; min-width: calc(25% - 10px) !important; margin-bottom: 10px !important; 
+        width: calc(25% - 10px) !important; flex: 0 0 calc(25% - 10px) !important; min-width: calc(25% - 10px) !important; margin-bottom: 8px !important; 
     }
     /* Box Rasio 16:10 */
     .card { 
-        border: 1px solid #444; border-radius: 8px; background: #1a1c24; padding: 10px 5px; aspect-ratio: 16 / 10; 
+        border: 1px solid #444; border-radius: 6px; background: #1a1c24; padding: 10px 4px; aspect-ratio: 16 / 10; 
         display: flex; flex-direction: column; justify-content: center; align-items: center; 
     }
-    .row { display: flex; align-items: center; gap: 5px; width: 100%; justify-content: center; }
-    .dot { height: 10px; width: 10px; border-radius: 50%; }
+    .row { display: flex; align-items: center; gap: 4px; width: 100%; justify-content: center; }
+    .dot { height: 8px; width: 8px; border-radius: 50%; }
     .on { background: #2ecc71; box-shadow: 0 0 5px #2ecc71; }
     .off { background: #e74c3c; }
-    .u-text { font-size: 11px; font-weight: bold; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .id-t { font-size: 9px; color: #888; }
-    .stButton>button { width: 100% !important; height: 24px !important; font-size: 9px !important; padding: 0 !important; margin-top: 5px !important; }
+    .u-text { font-size: 10px; font-weight: bold; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .id-t { font-size: 8px; color: #888; }
+    .stButton>button { width: 100% !important; height: 22px !important; font-size: 8px !important; padding: 0 !important; margin-top: 4px !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -33,7 +33,7 @@ def send_tg(tk, ci, msg):
         try: requests.post(f"https://api.telegram.org/bot{tk}/sendMessage", json={"chat_id":ci, "text":msg}, timeout=5)
         except: pass
 
-# --- DATABASE (ANTI HILANG) ---
+# --- DATABASE ---
 if 'db' not in st.session_state:
     st.session_state.db = {
         "groups": {
@@ -44,9 +44,4 @@ if 'db' not in st.session_state:
             }
         }
     }
-db = st.session_state.db
-
-# --- SIDEBAR ---
-with st.sidebar:
-    st.header("⚙️ Admin")
-    with st.expander("💾
+db = st.session_state
