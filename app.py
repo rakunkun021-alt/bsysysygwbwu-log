@@ -1,5 +1,5 @@
 import streamlit as st
-import requests, time, json, os
+import requests, time, json, os, threading
 
 DB = "monitor_db.json"
 def load():
@@ -16,15 +16,46 @@ def load():
 def save(d):
     with open(DB, "w") as f: json.dump(d, f)
 
+def notify(tk, ci, msg):
+    try: requests.post(f"https://api.telegram.org/bot{tk}/sendMessage", json={"chat_id":ci,"text":msg}, timeout=8)
+    except: pass
+
+# --- FUNGSI BACKGROUND WORKER ---
+def background_monitor():
+    while True:
+        data = load()
+        updated = False
+        for gn, info in data["groups"].items():
+            members = info.get("members", {})
+            if not members: continue
+            uids = list(members.keys())
+            try:
+                res = requests.post("https://presence.roblox.com/v1/presence/users", 
+                                    json={"userIds":[int(x) for x in uids]}, timeout=10).json()
+                pres = {str(p['userId']): p['userPresenceType'] for p in res.get('userPresences', [])}
+                for u_id in uids:
+                    m = members[u_id]
+                    cur = pres.get(u_id, 0)
+                    if m.get("last") == 2 and cur != 2:
+                        notify(info["tk"], info["ci"], f"🔴 {m['name']} KELUAR GAME")
+                    if m.get("last") != cur:
+                        data["groups"][gn]["members"][u_id]["last"] = cur
+                        updated = True
+            except: pass
+        if updated: save(data)
+        time.sleep(20) # Cek setiap 20 detik di latar belakang
+
+# Menjalankan Background Worker hanya sekali saat server mulai
+if not any(t.name == "RobloxWorker" for t in threading.enumerate()):
+    worker = threading.Thread(target=background_monitor, name="RobloxWorker", daemon=True)
+    worker.start()
+
+# --- TAMPILAN UI STREAMLIT (SAMA SEPERTI SEBELUMNYA) ---
 if 'db' not in st.session_state: st.session_state.db = load()
 db = st.session_state.db
 
 st.set_page_config(page_title="Roblox Monitor", layout="wide")
 st.markdown('<style>.block-container{padding:0.5rem!important;} .stButton>button{width:100%!important; white-space:nowrap!important;} .dot{height:10px; width:10px; border-radius:50%; display:inline-block; margin-right:8px;} .on{background:#0f0; box-shadow:0 0 10px #0f0;} .off{background:#f00;} .list-row{display:flex; align-items:center; background:#1e1e1e; border:1px solid #333; padding:8px; border-radius:5px; margin-bottom:2px; flex-grow:1;} .main-title{background: linear-gradient(90deg, #ff4b4b, #ff8181); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 32px; font-weight: bold; text-align: center; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 2px; border-bottom: 2px solid #333; padding-bottom: 10px;}</style>', unsafe_allow_html=True)
-
-def notify(tk, ci, msg):
-    try: requests.post(f"https://api.telegram.org/bot{tk}/sendMessage", json={"chat_id":ci,"text":msg}, timeout=8)
-    except: pass
 
 with st.sidebar:
     st.header("⚙️ ADMIN PANEL")
@@ -34,13 +65,10 @@ with st.sidebar:
             if gn and tk and ci:
                 db["groups"][gn] = {"tk":tk, "ci":ci, "members":{}}
                 save(db); st.rerun()
-    
     if db["groups"]:
         st.write("---")
         target = st.selectbox("Pilih Grup Tujuan", list(db["groups"].keys()))
-        uids_input = st.text_area("Tambah ID Massal", placeholder="Contoh: 12345, 67890, 54321")
-        st.caption("Gunakan koma (,) untuk memisahkan banyak ID.")
-        
+        uids_input = st.text_area("Tambah ID Massal", placeholder="Contoh: 12345, 67890")
         if st.button("TAMBAH SEMUA ID"):
             if uids_input:
                 id_list = [x.strip() for x in uids_input.replace("\n", ",").split(",") if x.strip().isdigit()]
@@ -48,45 +76,30 @@ with st.sidebar:
                     try:
                         r = requests.get(f"https://users.roblox.com/v1/users/{uid}", headers={"User-Agent":"Mozilla/5.0"}, timeout=10)
                         if r.status_code == 200:
-                            name = r.json().get("name", uid)
-                            db["groups"][target]["members"][uid] = {"name": name, "last": -1}
+                            db["groups"][target]["members"][uid] = {"name": r.json().get("name", uid), "last": -1}
                             if uid not in db["h_id"]: db["h_id"].append(uid)
                     except: pass
-                save(db); st.success(f"Berhasil memproses {len(id_list)} ID"); time.sleep(1); st.rerun()
-
+                save(db); st.rerun()
     with st.expander("📜 RIWAYAT ID"):
         for hid in db.get("h_id", []):
-            c1, c2 = st.columns([3,1])
-            c1.caption(hid)
+            c1, c2 = st.columns([3,1]); c1.caption(hid)
             if c2.button("❌", key="h"+hid):
                 db["h_id"].remove(hid); save(db); st.rerun()
 
-# Judul Baru yang Menarik
 st.markdown('<div class="main-title">ROBLOX ONLINE LOGGING</div>', unsafe_allow_html=True)
 
 for gn, info in db["groups"].items():
     with st.expander(f"📍 {gn.upper()}", expanded=True):
         m_list = info.get("members", {})
-        if not m_list:
-            st.caption("Belum ada ID di grup ini.")
-            continue
-        
+        if not m_list: continue
         uids = list(m_list.keys())
         try:
             res = requests.post("https://presence.roblox.com/v1/presence/users", json={"userIds":[int(x) for x in uids]}, timeout=10).json()
             pres = {str(p['userId']): p['userPresenceType'] for p in res.get('userPresences', [])}
-            
             for u_id in uids:
-                m = m_list[u_id]; cur = pres.get(u_id, 0)
-                if m.get("last") == 2 and cur != 2:
-                    notify(info["tk"], info["ci"], f"🔴 {m['name']} KELUAR GAME")
-                
-                db["groups"][gn]["members"][u_id]["last"] = cur
-                save(db)
-                
+                cur = pres.get(u_id, 0)
                 cl, cr = st.columns([0.88, 0.12])
-                with cl:
-                    st.markdown(f'<div class="list-row"><span class="dot {"on" if cur==2 else "off"}"></span><b style="color:#fff;font-size:14px;">{m["name"]}</b> <span style="color:#888;font-size:12px;margin-left:5px;">({u_id})</span></div>', unsafe_allow_html=True)
+                with cl: st.markdown(f'<div class="list-row"><span class="dot {"on" if cur==2 else "off"}"></span><b style="color:#fff;font-size:14px;">{m_list[u_id]["name"]}</b></div>', unsafe_allow_html=True)
                 with cr:
                     if st.button("🗑️", key="del"+gn+u_id):
                         del db["groups"][gn]["members"][u_id]; save(db); st.rerun()
