@@ -15,11 +15,11 @@ st.markdown("""
         gap: 5px !important;
         justify-content: flex-start !important;
     }
-    /* Memaksa kolom tetap 25% lebar layar (4 per baris) */
+    /* Memaksa kolom tetap 24% lebar layar agar muat 4 per baris dan tidak melar */
     [data-testid="column"] {
-        flex: 1 1 calc(25% - 10px) !important;
+        flex: 0 0 24% !important;
         min-width: 80px !important;
-        max-width: calc(25% - 10px) !important;
+        max-width: 24% !important;
         padding: 0px !important;
         margin-bottom: 10px !important;
     }
@@ -79,4 +79,4 @@ def send_telegram(token, chat_id, message):
 # --- DATABASE SESSION ---
 if 'db' not in st.session_state:
     st.session_state.db = {
-        "groups": {"Utama": {"token": "8243788772:AAGrR-XFydCLZKzykofsU8qYXhkXg26qt2k", "chat_id": "817
+        "groups": {"Utama": {"token": "8243
