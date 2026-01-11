@@ -12,18 +12,19 @@ def send_telegram(token, chat_id, message):
     except:
         pass
 
-st.set_page_config(page_title="Roblox Multi-Server Monitor", page_icon="🎮", layout="wide")
+# Setup Halaman
+st.set_page_config(page_title="Roblox Multi-Group", page_icon="🎮", layout="wide", initial_sidebar_state="expanded")
 st.title("📱 Roblox Group Monitor")
 
-# --- SISTEM PENYIMPANAN ---
+# --- SISTEM PENYIMPANAN DATA ---
 @st.cache_resource
 def get_global_data():
     return {
         "groups": {
-            "Default": {
+            "Utama": {
                 "token": "8243788772:AAGrR-XFydCLZKzykofsU8qYXhkXg26qt2k",
                 "chat_id": "8170247984",
-                "members": {} # {uid: {name: str, status: int}}
+                "members": {} 
             }
         },
         "history": []
@@ -38,31 +39,31 @@ def get_username(uid):
     except:
         return f"User-{uid}"
 
-# --- SIDEBAR: MANAJEMEN GRUP & AKUN ---
+# --- SIDEBAR: KONFIGURASI GRUP & BOT ---
 with st.sidebar:
-    st.header("🏢 Manajemen Grup")
+    st.header("⚙️ Konfigurasi")
     
-    # Tambah Grup Baru
-    with st.expander("➕ Buat Grup Baru"):
-        new_group_name = st.text_input("Nama Grup:")
-        g_token = st.text_input("Bot Token (Opsional):", help="Kosongkan jika ingin bot default")
-        g_chatid = st.text_input("Chat ID (Opsional):")
+    # 1. Fitur Tambah Grup & Bot Baru
+    with st.expander("➕ Tambah Grup / Bot Baru"):
+        new_g_name = st.text_input("Nama Grup (Misal: Server 1):")
+        g_token = st.text_input("Bot Token Baru (Opsional):")
+        g_chatid = st.text_input("Chat ID Baru (Opsional):")
         if st.button("Buat Grup"):
-            if new_group_name and new_group_name not in db["groups"]:
-                db["groups"][new_group_name] = {
-                    "token": g_token if g_token else db["groups"]["Default"]["token"],
-                    "chat_id": g_chatid if g_chatid else db["groups"]["Default"]["chat_id"],
+            if new_g_name and new_g_name not in db["groups"]:
+                db["groups"][new_g_name] = {
+                    "token": g_token if g_token else db["groups"]["Utama"]["token"],
+                    "chat_id": g_chatid if g_chatid else db["groups"]["Utama"]["chat_id"],
                     "members": {}
                 }
-                st.success(f"Grup {new_group_name} dibuat!")
+                st.success(f"Grup {new_g_name} Aktif!")
                 st.rerun()
 
     st.divider()
     
-    # Tambah Akun ke Grup
-    st.header("👤 Tambah Akun")
-    target_group = st.selectbox("Pilih Grup Tujuan:", list(db["groups"].keys()))
-    new_id = st.text_input("User ID Roblox:", placeholder="Contoh: 3410934690")
+    # 2. Fitur Tambah ID ke Grup
+    st.subheader("👤 Tambah Akun")
+    target_group = st.selectbox("Pilih Grup:", list(db["groups"].keys()))
+    new_id = st.text_input("User ID Roblox:", placeholder="Masukkan angka...")
     
     if st.button("Simpan ke Grup"):
         if new_id.isdigit():
@@ -70,55 +71,57 @@ with st.sidebar:
             if uid not in db["groups"][target_group]["members"]:
                 name = get_username(uid)
                 db["groups"][target_group]["members"][uid] = {"name": name, "last_status": -1}
-                if new_id not in db["history"]:
-                    db["history"].append(new_id)
-                st.success(f"{name} masuk ke {target_group}")
+                st.success(f"{name} ditambah ke {target_group}")
                 st.rerun()
 
-    if st.button("🔴 Hapus Semua Grup"):
-        db["groups"] = {"Default": db["groups"]["Default"]}
-        db["groups"]["Default"]["members"] = {}
+    st.divider()
+    if st.button("🔴 Reset Semua Data"):
+        db["groups"] = {"Utama": db["groups"]["Utama"]}
+        db["groups"]["Utama"]["members"] = {}
         st.rerun()
 
-# --- HALAMAN UTAMA: TAMPILAN GRID ---
+# --- HALAMAN UTAMA: TAMPILAN 4 ID PER BARIS ---
 for g_name, g_data in db["groups"].items():
     if not g_data["members"]:
         continue
         
-    st.subheader(f"📍 Group: {g_name}")
+    st.subheader(f"📍 Grup: {g_name}")
     uids = list(g_data["members"].keys())
     
     try:
-        # Ambil data presence dari Roblox
+        # Cek status ke Roblox
         res = requests.post("https://presence.roblox.com/v1/presence/users", json={"userIds": uids}).json()
         presences = {p['userId']: p['userPresenceType'] for p in res.get('userPresences', [])}
         
-        # Tampilan 1 baris = 4 kolom
-        cols = st.columns(4)
-        for idx, uid in enumerate(uids):
-            current_status = presences.get(uid, 0)
-            old_status = g_data["members"][uid]["last_status"]
-            name = g_data["members"][uid]["name"]
-            
-            # Notifikasi Keluar (per grup)
-            if old_status == 2 and current_status != 2:
-                send_telegram(g_data["token"], g_data["chat_id"], f"🔴 [{g_name}] {name} ({uid}) KELUAR Game")
-            
-            db["groups"][g_name]["members"][uid]["last_status"] = current_status
-            
-            # Tampilan di Grid
-            with cols[idx % 4]:
-                color = "🟢" if current_status == 2 else "🔴"
-                with st.container(border=True):
-                    st.markdown(f"**{color} {name}**")
-                    st.caption(f"ID: {uid}")
-                    if st.button("Hapus", key=f"del_{g_name}_{uid}"):
-                        del db["groups"][g_name]["members"][uid]
-                        st.rerun()
+        # Fitur 1 Baris = 4 ID (Grid)
+        rows = [uids[i:i + 4] for i in range(0, len(uids), 4)]
+        
+        for row in rows:
+            cols = st.columns(4)
+            for i, uid in enumerate(row):
+                current_status = presences.get(uid, 0)
+                old_status = g_data["members"][uid]["last_status"]
+                name = g_data["members"][uid]["name"]
+                
+                # Notifikasi Keluar (sesuai Bot Grup masing-masing)
+                if old_status == 2 and current_status != 2:
+                    send_telegram(g_data["token"], g_data["chat_id"], f"🔴 [{g_name}] {name} Keluar Game")
+                
+                db["groups"][g_name]["members"][uid]["last_status"] = current_status
+                
+                # Tampilan Kotak ID
+                with cols[i]:
+                    with st.container(border=True):
+                        color = "🟢" if current_status == 2 else "🔴"
+                        st.markdown(f"**{color} {name}**")
+                        st.caption(f"ID: {uid}")
+                        if st.button("Hapus", key=f"del_{g_name}_{uid}"):
+                            del db["groups"][g_name]["members"][uid]
+                            st.rerun()
         st.divider()
     except:
-        st.error(f"Gagal memuat data grup {g_name}")
+        st.error(f"Gagal memuat grup {g_name}")
 
-# Auto Refresh 30 detik
+# Auto Refresh
 time.sleep(30)
 st.rerun()
