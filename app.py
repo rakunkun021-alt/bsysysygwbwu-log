@@ -2,7 +2,23 @@ import streamlit as st
 import requests
 import time
 
-# --- FUNGSI KIRIM TELEGRAM ---
+# --- KONFIGURASI HALAMAN ---
+st.set_page_config(page_title="Roblox Monitor Pro", layout="wide")
+
+# CSS Tambahan agar di HP tetap kotak-kotak (Grid)
+st.markdown("""
+    <style>
+    [data-testid="stHorizontalBlock"] {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+    }
+    [data-testid="column"] {
+        min-width: 150px !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
 def send_telegram(token, chat_id, message):
     if not token or not chat_id: return
     try:
@@ -10,17 +26,7 @@ def send_telegram(token, chat_id, message):
         requests.post(url, json={"chat_id": chat_id, "text": message}, timeout=5)
     except: pass
 
-# --- BARIS INI YANG MEMBUAT TAMPILAN JADI 4 KOLOM ---
-st.set_page_config(
-    page_title="Roblox Multi-Group", 
-    page_icon="🎮", 
-    layout="wide", 
-    initial_sidebar_state="expanded"
-)
-
-st.title("📱 Roblox Group Monitor")
-
-# --- SISTEM PENYIMPANAN DATA ---
+# --- DATABASE PERMANEN ---
 @st.cache_resource
 def get_global_data():
     return {
@@ -30,47 +36,58 @@ def get_global_data():
                 "chat_id": "8170247984",
                 "members": {} 
             }
-        }
+        },
+        "last_saved": {} # Untuk fitur Riwayat Cerdas
     }
 
 db = get_global_data()
 
-# --- SIDEBAR: KONFIGURASI GRUP & BOT ---
 with st.sidebar:
-    st.header("⚙️ Konfigurasi")
+    st.header("⚙️ Menu Admin")
     
-    # Fitur Tambah Grup/Bot
-    with st.expander("➕ Tambah Grup / Bot Baru"):
-        new_g_name = st.text_input("Nama Grup Baru:")
-        g_token = st.text_input("Token Bot (Opsional):")
-        g_chatid = st.text_input("Chat ID (Opsional):")
+    # Tombol Pulihkan Riwayat
+    if db["last_saved"] and st.button("🔄 Pulihkan Data Terakhir"):
+        db["groups"] = db["last_saved"].copy()
+        st.rerun()
+
+    with st.expander("➕ Tambah Grup & Bot Baru"):
+        n_g = st.text_input("Nama Grup:")
+        n_t = st.text_input("Token Bot Telegram:")
+        n_c = st.text_input("Chat ID Telegram:")
         if st.button("Buat Grup"):
-            if new_g_name and new_g_name not in db["groups"]:
-                db["groups"][new_g_name] = {
-                    "token": g_token if g_token else db["groups"]["Utama"]["token"],
-                    "chat_id": g_chatid if g_chatid else db["groups"]["Utama"]["chat_id"],
+            if n_g:
+                db["groups"][n_g] = {
+                    "token": n_t if n_t else db["groups"]["Utama"]["token"],
+                    "chat_id": n_c if n_c else db["groups"]["Utama"]["chat_id"],
                     "members": {}
                 }
+                db["last_saved"] = db["groups"].copy() # Simpan riwayat
                 st.rerun()
 
     st.divider()
-    
-    # Tambah Akun
     st.subheader("👤 Tambah Akun")
-    target_group = st.selectbox("Pilih Grup:", list(db["groups"].keys()))
+    target = st.selectbox("Pilih Grup:", list(db["groups"].keys()))
     new_id = st.text_input("User ID Roblox:")
     
-    if st.button("Simpan ID"):
+    if st.button("Simpan Ke Pantauan"):
         if new_id.isdigit():
             uid = int(new_id)
-            if uid not in db["groups"][target_group]["members"]:
+            try:
                 res = requests.get(f"https://users.roblox.com/v1/users/{uid}").json()
                 name = res.get('name', f"User-{uid}")
-                db["groups"][target_group]["members"][uid] = {"name": name, "last_status": -1}
-                st.success(f"Berhasil!")
+                db["groups"][target]["members"][uid] = {"name": name, "last_status": -1}
+                db["last_saved"] = db["groups"].copy() # Simpan riwayat
                 st.rerun()
+            except: st.error("ID tidak valid")
 
-# --- HALAMAN UTAMA: TAMPILAN GRID 4 KOLOM ---
+    if st.button("🔴 Reset Total"):
+        db["groups"] = {"Utama": {"token": "8243788772:AAGrR-XFydCLZKzykofsU8qYXhkXg26qt2k", "chat_id": "8170247984", "members": {}}}
+        db["last_saved"] = {}
+        st.rerun()
+
+# --- TAMPILAN UTAMA ---
+st.title("📱 Roblox Group Monitor")
+
 for g_name, g_data in db["groups"].items():
     if g_data["members"]:
         st.subheader(f"📍 Grup: {g_name}")
@@ -80,7 +97,7 @@ for g_name, g_data in db["groups"].items():
             res = requests.post("https://presence.roblox.com/v1/presence/users", json={"userIds": uids}).json()
             pres = {p['userId']: p['userPresenceType'] for p in res.get('userPresences', [])}
             
-            # Membuat Baris dengan 4 Kolom
+            # Loop Grid (4 ID per baris)
             for i in range(0, len(uids), 4):
                 cols = st.columns(4)
                 for j, uid in enumerate(uids[i:i+4]):
@@ -95,14 +112,13 @@ for g_name, g_data in db["groups"].items():
                     
                     with cols[j]:
                         with st.container(border=True):
-                            color = "🟢" if curr == 2 else "🔴"
-                            st.markdown(f"**{color} {name}**")
+                            st.write(f"{'🟢' if curr==2 else '🔴'} **{name}**")
                             st.caption(f"ID: {uid}")
-                            if st.button("Hapus", key=f"del_{g_name}_{uid}"):
+                            if st.button("Hapus", key=f"btn_{g_name}_{uid}"):
                                 del db["groups"][g_name]["members"][uid]
+                                db["last_saved"] = db["groups"].copy()
                                 st.rerun()
-        except:
-            st.error(f"Error pada grup {g_name}")
+        except: st.error("Koneksi API Roblox Terganggu")
 
 time.sleep(30)
 st.rerun()
