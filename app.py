@@ -1,7 +1,6 @@
 import streamlit as st
 import requests, time, json, os
 
-# --- DB PERMANEN ---
 DB = "monitor_db.json"
 def load():
     if os.path.exists(DB):
@@ -16,7 +15,6 @@ def save(d):
 if 'db' not in st.session_state: st.session_state.db = load()
 db = st.session_state.db
 
-# --- UI (4 KOLOM, 16:10, RESOLUSI KECIL) ---
 st.set_page_config(page_title="Monitor", layout="wide")
 st.markdown("""
 <style>
@@ -38,6 +36,54 @@ def notify(tk, ci, msg):
         try: requests.post(f"https://api.telegram.org/bot{tk}/sendMessage", json={"chat_id":ci, "text":msg}, timeout=5)
         except: pass
 
-# --- SIDEBAR ---
 with st.sidebar:
-    with
+    st.header("⚙️ Admin")
+    with st.expander("➕ Grup"):
+        gn, tk, ci = st.text_input("Grup"), st.text_input("Token"), st.text_input("ChatID")
+        if st.button("Simpan"):
+            if gn and tk:
+                db["groups"][gn] = {"tk": tk, "ci": ci, "members": {}}
+                if tk not in db["h_tk"]: db["h_tk"].append(tk)
+                save(db); st.rerun()
+    if db["groups"]:
+        target = st.selectbox("Grup", list(db["groups"].keys()))
+        uid = st.text_input("ID Roblox")
+        if st.button("Tambah"):
+            if uid.isdigit():
+                try:
+                    res = requests.get(f"https://users.roblox.com/v1/users/{uid}", headers={"User-Agent":"Mozilla/5.0"}, timeout=10)
+                    if res.status_code == 200:
+                        db["groups"][target]["members"][uid] = {"name": res.json().get("name", uid), "last": -1}
+                        if uid not in db["h_id"]: db["h_id"].append(uid)
+                        save(db); st.rerun()
+                except: st.error("Error")
+    with st.expander("👥 Riwayat"):
+        for hid in db["h_id"]:
+            c1, c2 = st.columns([3,1])
+            c1.text(hid)
+            if c2.button("❌", key=f"h{hid}"):
+                db["h_id"].remove(hid); save(db); st.rerun()
+
+st.title("Monitor 16:10")
+for gn, info in db["groups"].items():
+    if not info["members"]: continue
+    st.subheader(f"📍 {gn}")
+    uids = list(info["members"].keys())
+    try:
+        r = requests.post("https://presence.roblox.com/v1/presence/users", json={"userIds": uids}, timeout=10).json()
+        pres = {str(p['userId']): p['userPresenceType'] for p in r.get('userPresences', [])}
+        cols = st.columns(4)
+        for i, uid in enumerate(uids):
+            m = info["members"][uid]; cur = pres.get(uid, 0)
+            if m.get("last") == 2 and cur != 2 and m.get("last") != -1:
+                notify(info["tk"], info["ci"], f"🔴 {m['name']} KELUAR")
+            db["groups"][gn]["members"][uid]["last"] = cur
+            save(db)
+            with cols[i % 4]:
+                st.markdown(f'<div class="card"><div class="u-n"><span class="dot {"on" if cur==2 else "off"}"></span>{m["name"]}</div><div class="u-i">{uid}</div></div>', unsafe_allow_html=True)
+                if st.button("🗑️", key=f"d{gn}{uid}"):
+                    del db["groups"][gn]["members"][uid]; save(db); st.rerun()
+    except: pass
+
+time.sleep(15)
+st.rerun()
