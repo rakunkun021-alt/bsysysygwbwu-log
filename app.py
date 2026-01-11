@@ -9,14 +9,13 @@ st.set_page_config(page_title="Roblox Monitor 16:10", layout="wide")
 # CSS UNTUK GRID 4 KOLOM KONSISTEN & RASIO 16:10
 st.markdown("""
     <style>
-    /* Paksa Grid agar selalu 4 kolom di baris manapun */
     [data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-wrap: wrap !important;
         gap: 8px !important;
         justify-content: flex-start !important;
     }
-    /* Mengunci ukuran kolom 24% agar tidak membesar sendiri */
+    /* Mengunci kolom agar tetap 24% lebar layar (4 per baris) */
     [data-testid="column"] {
         flex: 0 0 calc(25% - 10px) !important;
         min-width: 80px !important;
@@ -24,8 +23,6 @@ st.markdown("""
         padding: 0px !important;
         margin-bottom: 10px !important;
     }
-    
-    /* Box Rasio 16:10 */
     .card-roblox {
         border: 1px solid #444;
         border-radius: 8px;
@@ -38,8 +35,6 @@ st.markdown("""
         align-items: center;
         text-align: center;
     }
-    
-    /* Indikator Samping Nama */
     .user-row {
         display: flex;
         align-items: center;
@@ -55,7 +50,6 @@ st.markdown("""
     }
     .online { background-color: #2ecc71; box-shadow: 0 0 5px #2ecc71; }
     .offline { background-color: #e74c3c; }
-    
     .username-text {
         font-size: 12px;
         font-weight: bold;
@@ -65,8 +59,6 @@ st.markdown("""
         text-overflow: ellipsis;
     }
     .id-text { font-size: 10px; color: #888; margin-top: 2px; }
-    
-    /* Tombol Hapus Kecil */
     .stButton > button {
         width: 100% !important;
         height: 24px !important;
@@ -74,7 +66,6 @@ st.markdown("""
         padding: 0px !important;
         margin-top: 5px !important;
         background-color: #2d3139 !important;
-        border: none !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -83,26 +74,4 @@ def send_telegram(token, chat_id, message):
     if not token or not chat_id:
         return
     try:
-        url = f"https://api.telegram.org/bot{token}/sendMessage"
-        payload = {"chat_id": chat_id, "text": message}
-        requests.post(url, json=payload, timeout=5)
-    except:
-        pass
-
-# --- DATABASE SESSION ---
-if 'db' not in st.session_state:
-    st.session_state.db = {
-        "groups": {"Utama": {"token": "8243788772:AAGrR-XFydCLZKzykofsU8qYXhkXg26qt2k", "chat_id": "8170247984", "members": {}}},
-        "h_id": [], 
-        "h_tk": ["8243788772:AAGrR-XFydCLZKzykofsU8qYXhkXg26qt2k"], 
-        "h_ci": ["8170247984"]
-    }
-
-db = st.session_state.db
-
-# --- SIDEBAR ---
-with st.sidebar:
-    st.header("⚙️ Admin Panel")
-    
-    # Fitur Anti Hilang (Sesuai Pesan tgl 10)
-    with st
+        url = f"https://api
