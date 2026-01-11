@@ -52,21 +52,39 @@ db = get_db()
 with st.sidebar:
     st.header("⚙️ Menu Admin")
     
-    # 1. RIWAYAT TOKEN & CHAT ID (Menyatu dalam input)
+    # 1. RIWAYAT TOKEN & CHAT ID
     with st.expander("➕ Grup & Bot"):
         gn = st.text_input("Nama Grup:")
         
-        # Selectbox Riwayat Bot
-        tk = st.selectbox("Riwayat Token (Klik ^):", options=list(dict.fromkeys(db["h_tk"])))
+        tk_sel = st.selectbox("Riwayat Token (Klik ^):", options=list(dict.fromkeys(db["h_tk"])))
         tk_new = st.text_input("Atau ketik Token baru:")
         
-        ci = st.selectbox("Riwayat Chat ID (Klik ^):", options=list(dict.fromkeys(db["h_ci"])))
+        ci_sel = st.selectbox("Riwayat Chat ID (Klik ^):", options=list(dict.fromkeys(db["h_ci"])))
         ci_new = st.text_input("Atau ketik Chat ID baru:")
         
-        f_tk = tk_new if tk_new else tk
-        f_ci = ci_new if ci_new else ci
+        f_tk = tk_new if tk_new else tk_sel
+        f_ci = ci_new if ci_new else ci_sel
 
         if st.button("Simpan Grup"):
             if gn:
                 db["groups"][gn] = {"token": f_tk, "chat_id": f_ci, "members": {}}
-                if f_tk and f_tk not in db["h_tk"]: db["h_tk
+                if f_tk and f_tk not in db["h_tk"]:
+                    db["h_tk"].append(f_tk)
+                if f_ci and f_ci not in db["h_ci"]:
+                    db["h_ci"].append(f_ci)
+                st.success(f"Grup {gn} Aktif")
+                st.rerun()
+
+    st.divider()
+
+    # 2. RIWAYAT USER ID
+    st.subheader("👤 Tambah Akun")
+    tgt = st.selectbox("Pilih Grup Tujuan:", list(db["groups"].keys()))
+    
+    h_sel = st.selectbox("Riwayat User ID (Klik ^):", options=["-- Baru --"] + db["h_id"])
+    u_input = st.text_input("Ketik User ID Roblox:", value="" if h_sel == "-- Baru --" else h_sel)
+
+    if st.button("Tambahkan ke List"):
+        if u_input.isdigit():
+            uid = int(u_input)
+            try:
