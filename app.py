@@ -9,23 +9,23 @@ st.set_page_config(page_title="Roblox Monitor 16:10", layout="wide")
 # CSS UNTUK MENGUNCI 4 KOLOM & RASIO 16:10
 st.markdown("""
     <style>
-    /* Paksa container agar bisa menampung 4 kolom ke samping */
+    /* Mengatur container agar bisa membungkus kolom secara rapi */
     [data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-wrap: wrap !important;
-        gap: 10px !important;
+        gap: 12px !important;
         justify-content: flex-start !important;
     }
     
-    /* Kunci lebar kolom tepat 24% agar pas 4 kolom dalam 1 baris */
+    /* Mengunci lebar kolom agar selalu 4 kolom per baris */
     [data-testid="column"] {
         flex: 0 0 calc(25% - 15px) !important;
         min-width: 150px !important;
         max-width: calc(25% - 15px) !important;
-        margin-bottom: 15px !important;
+        margin-bottom: 10px !important;
     }
 
-    /* Box Rasio 16:10 */
+    /* Box Monitoring Rasio 16:10 */
     .card-roblox {
         border: 1px solid #444;
         border-radius: 10px;
@@ -54,17 +54,14 @@ st.markdown("""
     .username-text { font-size: 14px; font-weight: bold; color: white; }
     .id-text { font-size: 11px; color: #888; }
     
-    /* Tombol Hapus rapi di bawah kotak */
+    /* Tombol Hapus rapi */
     .stButton > button {
         width: 100% !important;
-        height: 30px !important;
+        height: 28px !important;
         font-size: 11px !important;
         margin-top: 5px !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
-def send_telegram(token, chat_id, message):
-    if not token or not chat_id: return
-    try:
-        url = f"https://api.
+def send_telegram(token,
