@@ -68,27 +68,3 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 def send_telegram(token, chat_id, message):
-    if not token or not chat_id: return
-    try:
-        url = f"https://api.telegram.org/bot{token}/sendMessage"
-        requests.post(url, json={"chat_id": chat_id, "text": message}, timeout=5)
-    except: pass
-
-# --- DATABASE SESSION ---
-if 'db' not in st.session_state:
-    st.session_state.db = {
-        "groups": {"Utama": {"token": "8243788772:AAGrR-XFydCLZKzykofsU8qYXhkXg26qt2k", "chat_id": "8170247984", "members": {}}},
-        "h_id": [], 
-        "h_tk": ["8243788772:AAGrR-XFydCLZKzykofsU8qYXhkXg26qt2k"], 
-        "h_ci": ["8170247984"]
-    }
-
-db = st.session_state.db
-
-# --- SIDEBAR (ADMIN PANEL) ---
-with st.sidebar:
-    st.header("⚙️ Admin Panel")
-    
-    # 1. Fitur Anti-Hilang (Sesuai ID Anda)
-    with st.expander("💾 Backup & Restore (Anti Hilang)"):
-        st.
