@@ -27,7 +27,7 @@ st.markdown("""
     .off { background: #ff0000; }
     .u-n { font-size: 8px; font-weight: bold; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 90%; text-align: center; }
     .u-i { font-size: 6px; color: #aaa; }
-    .stButton>button { width: 100% !important; height: 18px !important; padding: 0 !important; font-size: 10px !important; background: transparent !important; border: 1px solid #444 !important; margin-top: 2px !important; }
+    .stButton>button { width: 100% !important; height: 18px !important; font-size: 10px !important; background: transparent !important; border: 1px solid #444 !important; margin-top: 2px !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -46,7 +46,6 @@ with st.sidebar:
                 if tk not in db["h_tk"]: db["h_tk"].append(tk)
                 save(db); st.rerun()
     if db["groups"]:
-        st.divider()
         target = st.selectbox("Pilih", list(db["groups"].keys()))
         uid = st.text_input("ID Roblox")
         if st.button("Tambah"):
@@ -73,4 +72,20 @@ for gn, info in db["groups"].items():
         try:
             res = requests.post("https://presence.roblox.com/v1/presence/users", json={"userIds":uids}, timeout=10).json()
             pres = {str(p['userId']): p['userPresenceType'] for p in res.get('userPresences', [])}
-            for j in range(0, len(uids
+            for j in range(0, len(uids), 4):
+                cols = st.columns(4)
+                for i, uid in enumerate(uids[j:j+4]):
+                    m = info["members"][uid]
+                    cur = pres.get(uid, 0)
+                    if m.get("last") == 2 and cur != 2 and m.get("last") != -1:
+                        notify(info["tk"], info["ci"], "🔴 "+m['name']+" KELUAR")
+                    db["groups"][gn]["members"][uid]["last"] = cur
+                    save(db)
+                    with cols[i]:
+                        st.markdown('<div class="card"><div class="u-n"><span class="dot '+("on" if cur==2 else "off")+'"></span>'+m["name"]+'</div><div class="u-i">'+uid+'</div></div>', unsafe_allow_html=True)
+                        if st.button("🗑️", key="d"+gn+uid):
+                            del db["groups"][gn]["members"][uid]; save(db); st.rerun()
+        except: pass
+
+time.sleep(15)
+st.rerun()
