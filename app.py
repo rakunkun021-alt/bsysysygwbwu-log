@@ -24,7 +24,7 @@ st.markdown('<style>.block-container{padding:0.5rem!important;} .stButton>button
 
 def notify(tk, ci, msg):
     if tk and ci:
-        try: requests.post(f"https://api.telegram.org/bot{tk}/sendMessage", json={"chat_id":ci,"text":msg}, timeout=5)
+        try: requests.post("https://api.telegram.org/bot"+tk+"/sendMessage", json={"chat_id":ci,"text":msg}, timeout=5)
         except: pass
 
 with st.sidebar:
@@ -43,5 +43,19 @@ with st.sidebar:
         if st.button("TAMBAH"):
             if uid.isdigit():
                 try:
-                    h = {"User-Agent": "Mozilla/5.0"}
-                    r = requests.get(f"
+                    r = requests.get("https://users.roblox.com/v1/users/"+uid, headers={"User-Agent":"Mozilla/5.0"}, timeout=10)
+                    if r.status_code == 200:
+                        db["groups"][target]["members"][uid] = {"name": r.json().get("name", uid), "last":-1}
+                        if uid not in db["h_id"]: db["h_id"].append(uid)
+                        save(db); st.rerun()
+                except: pass
+
+st.header("Monitor")
+if not db["groups"]: st.info("Isi data di Sidebar.")
+
+for gn, info in db["groups"].items():
+    with st.expander(gn, expanded=True):
+        m_list = info.get("members", {})
+        if not m_list: continue
+        uids = list(m_list.keys())
+        try:
