@@ -5,16 +5,16 @@ import requests, time, json
 st.set_page_config(page_title="Monitor 16:10", layout="wide")
 st.markdown("""
 <style>
-    [data-testid="stHorizontalBlock"] { display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; gap: 6px !important; }
-    [data-testid="column"] { width: calc(25% - 8px) !important; flex: 0 0 calc(25% - 8px) !important; min-width: calc(25% - 8px) !important; margin-bottom: 8px !important; }
+    [data-testid="stHorizontalBlock"] { display: flex !important; flex-direction: row !important; flex-wrap: wrap !important; gap: 8px !important; }
+    [data-testid="column"] { width: calc(25% - 10px) !important; flex: 0 0 calc(25% - 10px) !important; min-width: calc(25% - 10px) !important; margin-bottom: 10px !important; }
     .card { border: 1px solid #444; border-radius: 8px; background: #1a1c24; padding: 10px 5px; aspect-ratio: 16 / 10; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-    .row { display: flex; align-items: center; gap: 5px; }
-    .dot { height: 10px; width: 10px; border-radius: 50%; }
+    .row { display: flex; align-items: center; gap: 6px; width: 100%; justify-content: center; }
+    .dot { height: 10px; width: 10px; border-radius: 50%; flex-shrink: 0; }
     .on { background: #2ecc71; box-shadow: 0 0 5px #2ecc71; }
     .off { background: #e74c3c; }
-    .u-text { font-size: 11px; font-weight: bold; color: white; overflow: hidden; text-overflow: ellipsis; }
-    .id-t { font-size: 9px; color: #888; }
-    .stButton>button { width: 100% !important; height: 24px !important; font-size: 9px !important; padding: 0 !important; }
+    .u-text { font-size: 11px; font-weight: bold; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .id-t { font-size: 9px; color: #888; margin-top: 2px; }
+    .stButton>button { width: 100% !important; height: 24px !important; font-size: 9px !important; padding: 0 !important; margin-top: 5px !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -31,10 +31,7 @@ db = st.session_state.db
 # --- SIDEBAR ---
 with st.sidebar:
     st.header("⚙️ Admin")
-    with st.expander("💾 Backup"):
-        st.code(json.dumps(db))
-        rc = st.text_area("Restore:")
-        if st.button("Restore"):
+    with st.expander("💾 Backup"):        if st.button("Restore"):
             try: st.session_state.db = json.loads(rc); st.rerun()
             except: st.error("Gagal")
     
