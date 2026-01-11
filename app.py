@@ -27,18 +27,19 @@ st.markdown("""
     .off { background: #e74c3c; }
     .u-n { font-size: 7px; font-weight: bold; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 95%; text-align: center; }
     .u-i { font-size: 5px; color: #888; text-align: center; }
-    .stButton>button { width: 100% !important; background: transparent !important; border: 0.5px solid #444 !important; color: #ff4b4b !important; height: 16px !important; font-size: 8px !important; padding: 0 !important; margin-top: 2px !important; }
+    .stButton>button { width: 100% !important; background: transparent !important; border: 0.5px solid #444 !important; color: #ff4b4b !important; height: 16px !important; font-size: 10px !important; padding: 0 !important; margin-top: 2px !important; }
 </style>
 """, unsafe_allow_html=True)
 
 def notify(tk, ci, msg):
     if tk and ci:
-        try: requests.post(f"https://api.telegram.org/bot{tk}/sendMessage", json={"chat_id":ci, "text":msg}, timeout=5)
+        url = "https://api.telegram.org/bot" + tk + "/sendMessage"
+        try: requests.post(url, json={"chat_id":ci, "text":msg}, timeout=5)
         except: pass
 
 with st.sidebar:
-    st.header("⚙️ Admin")
-    with st.expander("➕ Tambah Grup"):
+    st.header("Admin")
+    with st.expander("Grup"):
         gn, tk, ci = st.text_input("Grup"), st.text_input("Token"), st.text_input("ChatID")
         if st.button("Simpan"):
             if gn and tk:
@@ -48,7 +49,19 @@ with st.sidebar:
     if db["groups"]:
         target = st.selectbox("Pilih Grup", list(db["groups"].keys()))
         uid = st.text_input("ID")
-        if st.button("Tambah ID"):
+        if st.button("Tambah"):
             if uid.isdigit():
                 try:
-                    res = requests.get(f"
+                    url = "https://users.roblox.com/v1/users/" + uid
+                    res = requests.get(url, headers={"User-Agent":"Mozilla/5.0"}, timeout=10)
+                    if res.status_code == 200:
+                        db["groups"][target]["members"][uid] = {"name": res.json().get("name", uid), "last": -1}
+                        if uid not in db["h_id"]: db["h_id"].append(uid)
+                        save(db); st.rerun()
+                except: pass
+    with st.expander("Riwayat"):
+        for hid in db["h_id"]:
+            c1, c2 = st.columns([3,1])
+            c1.text(hid)
+            if c2.button("❌", key="h"+hid):
+                db["h_id"].remove(hid); save
