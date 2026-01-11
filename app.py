@@ -73,15 +73,4 @@ st.markdown("""
         padding: 0px !important;
         margin-top: 5px !important;
         border: none !important;
-        background-color: #2d3139 !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-def send_telegram(token, chat_id, message):
-    if not token or not chat_id:
-        return
-    try:
-        url = f"https://api.telegram.org/bot{token}/sendMessage"
-        payload = {"chat_id": chat_id, "text": message}
-        requests.post(url, json=payload,
+        background-color
