@@ -27,7 +27,7 @@ st.markdown("""
     .off { background: #e74c3c; }
     .u-n { font-size: 7px; font-weight: bold; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 95%; text-align: center; }
     .u-i { font-size: 5px; color: #888; text-align: center; }
-    .stButton>button { width: 100% !important; background: transparent !important; border: 0.5px solid #444 !important; color: #ff4b4b !important; height: 15px !important; font-size: 8px !important; padding: 0 !important; margin-top: 2px !important; }
+    .stButton>button { width: 100% !important; background: transparent !important; border: 0.5px solid #444 !important; color: #ff4b4b !important; height: 16px !important; font-size: 8px !important; padding: 0 !important; margin-top: 2px !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -38,4 +38,17 @@ def notify(tk, ci, msg):
 
 with st.sidebar:
     st.header("⚙️ Admin")
-    with st.expander("
+    with st.expander("➕ Tambah Grup"):
+        gn, tk, ci = st.text_input("Grup"), st.text_input("Token"), st.text_input("ChatID")
+        if st.button("Simpan"):
+            if gn and tk:
+                db["groups"][gn] = {"tk": tk, "ci": ci, "members": {}}
+                if tk not in db["h_tk"]: db["h_tk"].append(tk)
+                save(db); st.rerun()
+    if db["groups"]:
+        target = st.selectbox("Pilih Grup", list(db["groups"].keys()))
+        uid = st.text_input("ID")
+        if st.button("Tambah ID"):
+            if uid.isdigit():
+                try:
+                    res = requests.get(f"
