@@ -17,7 +17,7 @@ st.markdown("""
         justify-content: flex-start !important;
     }
     
-    /* Kunci lebar kolom tepat 24% agar pas 4 kolom dalam 1 baris (ID ke-5 otomatis baris baru) */
+    /* Kunci lebar kolom tepat 24% agar pas 4 kolom dalam 1 baris */
     [data-testid="column"] {
         flex: 0 0 calc(25% - 15px) !important;
         min-width: 150px !important;
@@ -67,19 +67,4 @@ st.markdown("""
 def send_telegram(token, chat_id, message):
     if not token or not chat_id: return
     try:
-        url = f"https://api.telegram.org/bot{token}/sendMessage"
-        requests.post(url, json={"chat_id": chat_id, "text": message}, timeout=5)
-    except: pass
-
-# --- DATABASE SESSION ---
-if 'db' not in st.session_state:
-    st.session_state.db = {
-        "groups": {
-            "Utama": {
-                "token": "8243788772:AAGrR-XFydCLZKzykofsU8qYXhkXg26qt2k", 
-                "chat_id": "8170247984", 
-                "members": {}
-            }
-        },
-        "h_id": [], 
-        "h_tk": ["82
+        url = f"https://api.
