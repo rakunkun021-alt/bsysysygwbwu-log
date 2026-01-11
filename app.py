@@ -15,11 +15,11 @@ st.markdown("""
         gap: 8px !important;
         justify-content: flex-start !important;
     }
-    /* Mengunci kolom agar tetap 24% lebar layar (4 per baris) */
+    /* Mengunci kolom agar tetap 1/4 lebar layar (24%) agar tidak melar */
     [data-testid="column"] {
-        flex: 0 0 calc(25% - 10px) !important;
+        flex: 0 0 24% !important;
         min-width: 80px !important;
-        max-width: calc(25% - 10px) !important;
+        max-width: 24% !important;
         padding: 0px !important;
         margin-bottom: 10px !important;
     }
@@ -74,4 +74,46 @@ def send_telegram(token, chat_id, message):
     if not token or not chat_id:
         return
     try:
-        url = f"https://api
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
+        payload = {"chat_id": chat_id, "text": message}
+        requests.post(url, json=payload, timeout=5)
+    except:
+        pass
+
+# --- DATABASE SESSION ---
+if 'db' not in st.session_state:
+    st.session_state.db = {
+        "groups": {"Utama": {"token": "8243788772:AAGrR-XFydCLZKzykofsU8qYXhkXg26qt2k", "chat_id": "8170247984", "members": {}}},
+        "h_id": [], 
+        "h_tk": ["8243788772:AAGrR-XFydCLZKzykofsU8qYXhkXg26qt2k"], 
+        "h_ci": ["8170247984"]
+    }
+
+db = st.session_state.db
+
+# --- SIDEBAR ---
+with st.sidebar:
+    st.header("⚙️ Admin Panel")
+    
+    with st.expander("💾 Backup & Restore (Anti Hilang)"):
+        st.caption("Salin kode ini ke Catatan HP:")
+        st.code(json.dumps(db))
+        res_code = st.text_input("Tempel kode restore:")
+        if st.button("Restore Data"):
+            if res_code:
+                try:
+                    st.session_state.db = json.loads(res_code)
+                    st.rerun()
+                except:
+                    st.error("Format salah")
+
+    with st.expander("🤖 Set Bot & Grup"):
+        gn = st.text_input("Nama Grup Baru:")
+        tk_s = st.selectbox("Riwayat Token:", options=db["h_tk"])
+        tk_n = st.text_input("Atau Token Baru:")
+        ci_s = st.selectbox("Riwayat Chat ID:", options=db["h_ci"])
+        ci_n = st.text_input("Atau Chat ID Baru:")
+        
+        if st.button("Simpan Konfigurasi"):
+            if gn:
+                ft = tk_n
