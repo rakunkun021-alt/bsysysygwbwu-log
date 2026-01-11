@@ -9,22 +9,17 @@ st.set_page_config(page_title="Roblox Monitor 16:10", layout="wide")
 # CSS UNTUK MENGUNCI 4 KOLOM & RASIO 16:10
 st.markdown("""
     <style>
-    /* Paksa container utama agar bisa menampung 4 kolom */
     [data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-wrap: wrap !important;
         gap: 10px !important;
         justify-content: flex-start !important;
     }
-    
-    /* Kunci lebar kolom tepat 24% agar pas 4 kolom dalam 1 baris */
     [data-testid="column"] {
         flex: 0 0 calc(25% - 15px) !important;
         min-width: 150px !important;
         max-width: calc(25% - 15px) !important;
     }
-
-    /* Box Rasio 16:10 */
     .card-roblox {
         border: 1px solid #444;
         border-radius: 10px;
@@ -38,7 +33,6 @@ st.markdown("""
         text-align: center;
         width: 100%;
     }
-    
     .user-row {
         display: flex;
         align-items: center;
@@ -49,11 +43,8 @@ st.markdown("""
     .status-dot { height: 12px; width: 12px; border-radius: 50%; }
     .online { background-color: #2ecc71; box-shadow: 0 0 8px #2ecc71; }
     .offline { background-color: #e74c3c; }
-    
     .username-text { font-size: 14px; font-weight: bold; color: white; }
     .id-text { font-size: 11px; color: #888; }
-    
-    /* Tombol Hapus agar masuk di dalam kolom dan rapi */
     .stButton > button {
         width: 100% !important;
         height: 30px !important;
@@ -73,53 +64,4 @@ def send_telegram(token, chat_id, message):
 # --- DATABASE SESSION ---
 if 'db' not in st.session_state:
     st.session_state.db = {
-        "groups": {"Utama": {"token": "8243788772:AAGrR-XFydCLZKzykofsU8qYXhkXg26qt2k", "chat_id": "8170247984", "members": {}}},
-        "h_id": [], "h_tk": ["8243788772:AAGrR-XFydCLZKzykofsU8qYXhkXg26qt2k"], "h_ci": ["8170247984"]
-    }
-
-db = st.session_state.db
-
-# --- SIDEBAR ---
-with st.sidebar:
-    st.header("⚙️ Admin Panel")
-    with st.expander("💾 Backup & Restore (Anti Hilang)"):
-        st.code(json.dumps(db))
-        res_code = st.text_area("Tempel kode restore:")
-        if st.button("Restore Data"):
-            try:
-                st.session_state.db = json.loads(res_code)
-                st.rerun()
-            except: st.error("Gagal")
-
-    with st.expander("🤖 Set Bot & Grup"):
-        gn = st.text_input("Nama Grup:")
-        if st.button("Tambah Grup"):
-            if gn: db["groups"][gn] = {"token": db["h_tk"][0], "chat_id": db["h_ci"][0], "members": {}}; st.rerun()
-
-    st.divider()
-    target = st.selectbox("Pilih Grup:", list(db["groups"].keys()))
-    u_in = st.text_input("Input ID Roblox:")
-    if st.button("Tambahkan"):
-        if u_in.isdigit():
-            try:
-                res = requests.get(f"https://users.roblox.com/v1/users/{u_in}").json()
-                name = res.get('name', f"User-{u_in}")
-                # Set status awal ke -1 agar tidak langsung kirim notif saat baru ditambah
-                db["groups"][target]["members"][u_in] = {"name": name, "last": -1}
-                st.rerun()
-            except: st.error("ID Gagal")
-
-# --- MONITORING CENTER ---
-st.header("Live Monitoring")
-
-for g_name, g_data in db["groups"].items():
-    if g_data["members"]:
-        st.subheader(f"📍 {g_name}")
-        uids = list(g_data["members"].keys())
-        
-        try:
-            r = requests.post("https://presence.roblox.com/v1/presence/users", json={"userIds": uids}, timeout=5).json()
-            pres = {str(p['userId']): p['userPresenceType'] for p in r.get('userPresences', [])}
-            
-            # PAKSA GRID 4 KOLOM
-            cols = st.columns
+        "groups": {"Utama": {"token": "824378877
