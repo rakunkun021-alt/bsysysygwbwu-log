@@ -9,7 +9,6 @@ st.set_page_config(page_title="Roblox Monitor", layout="wide")
 # CSS untuk konsistensi Grid 4 Kolom dan Rasio 16:10
 st.markdown("""
     <style>
-    /* Mengunci Grid agar selalu 4 kolom (25%) dan tidak melebar */
     [data-testid="stHorizontalBlock"] {
         display: flex !important;
         flex-wrap: wrap !important;
@@ -17,14 +16,12 @@ st.markdown("""
         justify-content: flex-start !important;
     }
     [data-testid="column"] {
-        flex: 1 1 calc(25% - 10px) !important; /* Paksa 4 kolom */
+        flex: 1 1 calc(25% - 10px) !important;
         min-width: 80px !important;
         max-width: calc(25% - 10px) !important;
         padding: 0px !important;
         margin-bottom: 10px !important;
     }
-    
-    /* Box Rasio 16:10 */
     .card-roblox {
         border: 1px solid #444;
         border-radius: 6px;
@@ -37,7 +34,6 @@ st.markdown("""
         align-items: center;
         text-align: center;
     }
-    
     .user-row {
         display: flex;
         align-items: center;
@@ -53,7 +49,6 @@ st.markdown("""
     }
     .online { background-color: #2ecc71; box-shadow: 0 0 5px #2ecc71; }
     .offline { background-color: #e74c3c; }
-    
     .username-text {
         font-size: 11px;
         font-weight: bold;
@@ -63,8 +58,6 @@ st.markdown("""
         text-overflow: ellipsis;
     }
     .id-text { font-size: 9px; color: #888; margin-top: 2px; }
-    
-    /* Tombol Hapus agar tidak merusak layout */
     .stButton > button {
         width: 100% !important;
         height: 22px !important;
@@ -87,30 +80,4 @@ def send_telegram(token, chat_id, message):
 # --- DATABASE SESSION ---
 if 'db' not in st.session_state:
     st.session_state.db = {
-        "groups": {"Utama": {"token": "8243788772:AAGrR-XFydCLZKzykofsU8qYXhkXg26qt2k", "chat_id": "8170247984", "members": {}}},
-        "h_id": [], "h_tk": ["8243788772:AAGrR-XFydCLZKzykofsU8qYXhkXg26qt2k"], "h_ci": ["8170247984"]
-    }
-
-db = st.session_state.db
-
-# --- SIDEBAR ---
-with st.sidebar:
-    st.header("⚙️ Admin")
-    
-    with st.expander("💾 Backup & Restore (Anti Hilang)"):
-        st.caption("Copy kode ini untuk backup:")
-        st.code(json.dumps(db))
-        restore = st.text_input("Tempel kode restore:")
-        if st.button("Restore Sekarang"):
-            try:
-                st.session_state.db = json.loads(restore)
-                st.rerun()
-            except: st.error("Format salah")
-
-    with st.expander("🤖 Set Bot & Grup"):
-        gn = st.text_input("Nama Grup:")
-        tk_sel = st.selectbox("Riwayat Token:", options=db["h_tk"])
-        tk_new = st.text_input("Atau Token Baru:")
-        ci_sel = st.selectbox("Riwayat Chat ID:", options=db["h_ci"])
-        ci_new = st.text_input("Atau Chat ID Baru:")
-        if st.button("Simpan Konfigurasi"):
+        "groups": {"Utama": {"token": "8243788772:AAG
