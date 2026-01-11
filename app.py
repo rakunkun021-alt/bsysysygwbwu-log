@@ -20,7 +20,7 @@ if 'db' not in st.session_state: st.session_state.db = load()
 db = st.session_state.db
 
 st.set_page_config(page_title="Monitor", layout="wide")
-st.markdown('<style>.block-container{padding:1rem!important;} .stButton>button{width:100%!important; white-space:nowrap!important;} .dot{height:10px; width:10px; border-radius:50%; display:inline-block; margin-right:10px;} .on{background:#0f0;} .off{background:#f00;} .list-row{background:#262730; padding:10px; border-radius:5px; border-left:4px solid #444; margin-bottom:5px; flex-grow:1; display:flex; align-items:center;}</style>', unsafe_allow_html=True)
+st.markdown('<style>.block-container{padding:0.5rem!important;} .stButton>button{width:100%!important; white-space:nowrap!important;} .dot{height:8px; width:8px; border-radius:50%; display:inline-block; margin-right:5px;} .on{background:#0f0;} .off{background:#f00;} .list-row{display:flex; align-items:center; background:#1e1e1e; border:1px solid #333; padding:5px; border-radius:4px; margin-bottom:2px;}</style>', unsafe_allow_html=True)
 
 def notify(tk, ci, msg):
     if tk and ci:
@@ -33,12 +33,15 @@ with st.sidebar:
         gn = st.text_input("Nama")
         tk = st.text_input("Token")
         ci = st.text_input("ChatID")
-        if st.button("SIMPAN GRUP"):
+        if st.button("SIMPAN"):
             if gn and tk and ci:
                 db["groups"][gn] = {"tk":tk, "ci":ci, "members":{}}
                 save(db); st.rerun()
     if db["groups"]:
-        st.write("---")
         target = st.selectbox("Pilih", list(db["groups"].keys()))
         uid = st.text_input("ID Roblox")
-        if st.button("
+        if st.button("TAMBAH"):
+            if uid.isdigit():
+                try:
+                    h = {"User-Agent": "Mozilla/5.0"}
+                    r = requests.get(f"
