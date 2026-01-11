@@ -3,10 +3,10 @@ import requests
 import time
 import json
 
-# --- KONFIGURASI HALAMAN ---
+# --- CONFIG ---
 st.set_page_config(page_title="Monitor 16:10 Pro", layout="wide")
 
-# CSS UNTUK PAKSA 4 KOLOM DI HP & RASIO 16:10
+# CSS: PAKSA 4 KOLOM DI HP & RASIO 16:10
 st.markdown("""
 <style>
     [data-testid="stHorizontalBlock"] {
@@ -32,25 +32,14 @@ st.markdown("""
         justify-content: center;
         align-items: center;
         text-align: center;
-        width: 100%;
     }
-    .user-row {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 4px;
-    }
+    .user-row { display: flex; align-items: center; justify-content: center; gap: 4px; }
     .status-dot { height: 8px; width: 8px; border-radius: 50%; }
     .online { background-color: #2ecc71; box-shadow: 0 0 5px #2ecc71; }
     .offline { background-color: #e74c3c; }
     .username-text { font-size: 10px; font-weight: bold; color: white; overflow: hidden; }
     .id-text { font-size: 8px; color: #888; }
-    .stButton > button {
-        width: 100% !important;
-        height: 22px !important;
-        font-size: 8px !important;
-        padding: 0px !important;
-    }
+    .stButton > button { width: 100% !important; height: 22px !important; font-size: 8px !important; padding: 0px !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -61,19 +50,12 @@ def send_telegram(token, chat_id, message):
         requests.post(url, json={"chat_id": chat_id, "text": message}, timeout=5)
     except: pass
 
-# --- DATABASE ---
+# --- DATABASE (ANTI HILANG) ---
 if 'db' not in st.session_state:
     st.session_state.db = {
-        "groups": {
-            "Utama": {
-                "token": "8243788772:AAGrR-XFydCLZKzykofsU8qYXhkXg26qt2k",
-                "chat_id": "8170247984",
-                "members": {}
-            }
-        },
+        "groups": {"Utama": {"token": "8243788772:AAGrR-XFydCLZKzykofsU8qYXhkXg26qt2k", "chat_id": "8170247984", "members": {}}},
         "h_id": []
     }
-
 db = st.session_state.db
 
 # --- SIDEBAR ---
@@ -93,16 +75,4 @@ with st.sidebar:
     if st.button("Tambah"):
         if u_in.isdigit():
             try:
-                res = requests.get(f"https://users.roblox.com/v1/users/{u_in}").json()
-                name = res.get('name', f"User-{u_in}")
-                db["groups"][target]["members"][u_in] = {"name": name, "last": -1}
-                if u_in not in db["h_id"]: db["h_id"].append(u_in)
-                st.rerun()
-            except: st.error("Gagal")
-
-# --- MONITORING ---
-st.title("Monitor 16:10")
-
-for g_name, g_data in db["groups"].items():
-    if g_data["members"]:
-        st.subheader(f"📍 {g_
+                res = requests.get(f"
