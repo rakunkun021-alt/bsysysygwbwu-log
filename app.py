@@ -5,7 +5,7 @@ import time
 # --- KONFIGURASI HALAMAN ---
 st.set_page_config(page_title="Roblox Grid Monitor", layout="wide")
 
-# CSS KHUSUS AGAR TAMPILAN KOTAK KECIL 4 KE SAMPING DI HP
+# CSS AGAR TAMPILAN KECIL 4 KE SAMPING DI HP
 st.markdown("""
     <style>
     [data-testid="stHorizontalBlock"] {
@@ -66,4 +66,70 @@ with st.sidebar:
         if st.button("Simpan Grup"):
             if gn:
                 db["groups"][gn] = {"token": f_tk, "chat_id": f_ci, "members": {}}
-                if f_tk and f_tk not in db["h_tk"]: db["h
+                if f_tk and f_tk not in db["h_tk"]: 
+                    db["h_tk"].append(f_tk)
+                if f_ci and f_ci not in db["h_ci"]: 
+                    db["h_ci"].append(f_ci)
+                st.success(f"Grup {gn} Aktif")
+                st.rerun()
+
+    st.divider()
+
+    # 2. RIWAYAT USER ID
+    st.subheader("👤 Tambah Akun")
+    tgt = st.selectbox("Pilih Grup Tujuan:", list(db["groups"].keys()))
+    h_sel = st.selectbox("Riwayat User ID (Klik ^):", options=["-- Baru --"] + db["h_id"])
+    u_input = st.text_input("Ketik User ID Roblox:", value="" if h_sel == "-- Baru --" else h_sel)
+
+    if st.button("Tambahkan ke List"):
+        if u_input.isdigit():
+            uid = int(u_input)
+            try:
+                res = requests.get(f"https://users.roblox.com/v1/users/{uid}").json()
+                name = res.get('name', f"User-{uid}")
+                db["groups"][tgt]["members"][uid] = {"name": name, "last_status": -1}
+                if u_input not in db["h_id"]: 
+                    db["h_id"].append(u_input)
+                st.success("Berhasil!")
+                st.rerun()
+            except: 
+                st.error("ID tidak valid")
+
+# --- TAMPILAN UTAMA ---
+st.title("🎮 Monitoring")
+
+for g_name, g_data in db["groups"].items():
+    if g_data["members"]:
+        st.subheader(f"📍 Grup: {g_name}")
+        uids = list(g_data["members"].keys())
+        
+        try:
+            res_call = requests.post("https://presence.roblox.com/v1/presence/users", json={"userIds": uids})
+            res = res_call.json()
+            pres = {p['userId']: p['userPresenceType'] for p in res.get('userPresences', [])}
+            
+            # GRID 4 KOLOM
+            cols = st.columns(4)
+            for i, uid in enumerate(uids):
+                curr = pres.get(uid, 0)
+                old = g_data["members"][uid]["last_status"]
+                name = g_data["members"][uid]["name"]
+                
+                # Cek Notif Keluar
+                if old == 2 and curr != 2:
+                    send_telegram(g_data["token"], g_data["chat_id"], f"🔴 {name} Keluar Game")
+                
+                db["groups"][g_name]["members"][uid]["last_status"] = curr
+                
+                with cols[i % 4]:
+                    with st.container(border=True):
+                        st.write("🟢" if curr == 2 else "🔴")
+                        st.caption(name[:8])
+                        if st.button("🗑️", key=f"del_{g_name}_{uid}"):
+                            del db["groups"][g_name]["members"][uid]
+                            st.rerun()
+        except:
+            st.write("Syncing data...")
+
+time.sleep(30)
+st.rerun()
