@@ -6,7 +6,10 @@ def load():
     if os.path.exists(DB):
         try:
             with open(DB, "r") as f:
-                d = json.load(f); return d
+                d = json.load(f)
+                if "groups" not in d: d["groups"] = {}
+                if "h_id" not in d: d["h_id"] = []
+                return d
         except: pass
     return {"groups": {}, "h_id": []}
 
@@ -58,4 +61,16 @@ for gn, info in db["groups"].items():
         uids = list(m_list.keys())
         try:
             res = requests.post("https://presence.roblox.com/v1/presence/users", json={"userIds":[int(x) for x in uids]}, timeout=10).json()
-            pres = {
+            pres = {str(p['userId']): p['userPresenceType'] for p in res.get('userPresences', [])}
+            for u_id in uids:
+                m = m_list[u_id]; cur = pres.get(u_id, 0)
+                if m.get("last")==2 and cur!=2 and m.get("last")!=-1:
+                    notify(info["tk"], info["ci"], "🔴 "+m['name']+" KELUAR")
+                db["groups"][gn]["members"][u_id]["last"] = cur
+                save(db); cl, cr = st.columns([0.85, 0.15])
+                with cl: st.markdown('<div class="list-row"><span class="dot '+('on' if cur==2 else 'off')+'"></span><b style="color:#fff;font-size:13px;">'+m['name']+'</b></div>', unsafe_allow_html=True)
+                with cr:
+                    if st.button("🗑️", key="del"+gn+u_id):
+                        del db["groups"][gn]["members"][u_id]; save(db); st.rerun()
+        except: pass
+time.sleep(15); st.rerun()
